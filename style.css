@@ -1,3 +1,39 @@
+/* Einstellungen (Settings) */
+.settings-form {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-soft);
+}
+.settings-form label {
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-form input[type="number"] {
+  background: var(--bg-elevated-soft);
+  color: var(--text);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 6px 10px;
+  font-size: 1rem;
+  width: 3.5em;
+  text-align: center;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.settings-form input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
 :root {
   --bg: #0b0c10;
   --bg-elevated: #151821;
@@ -363,8 +399,9 @@ body {
   border: 1px solid var(--accent-soft);
 }
 
+/* Double the size of the timer number */
 .timer-number {
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-size: clamp(4rem, 6vw, 5.2rem);
   font-variant-numeric: tabular-nums;
 }
 
@@ -379,29 +416,23 @@ body {
   #app {
     padding: 16px 10px 24px;
   }
-
   .app-header {
     flex-direction: column;
     align-items: flex-start;
   }
-
   .active-container {
     padding: 18px 12px 14px;
   }
-
   .exercise-list {
     font-size: clamp(1.2rem, 4vw, 1.6rem);
   }
-
   .active-footer {
     flex-direction: column-reverse;
     align-items: stretch;
   }
-
   .timer-wrapper {
     justify-content: center;
   }
-
   .btn--primary {
     width: 100%;
   }

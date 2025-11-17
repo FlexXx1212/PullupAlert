@@ -6,7 +6,6 @@ Single Page App als Reminder und Übungsanzeige für tägliche Klimmzug-Einheite
 
 - Workouts + Zeiten zentral in `workouts.json` (JSON-Format, flexibel erweiterbar).
 - Automatische Alerts zu den definierten Uhrzeiten:
-  - Audio-Signal (`alert.mp3`)
   - Blinkender Tab-Titel, bis der Tab wieder aktiv ist.
   - Anzeige des passenden Workouts im Vollbild mit großer Schrift.
 - 75-Sekunden-Timer, der automatisch immer wieder neu startet.
@@ -24,7 +23,6 @@ Single Page App als Reminder und Übungsanzeige für tägliche Klimmzug-Einheite
 - `style.css` – Styling (Dark Mode, Karten, Timer, etc.).
 - `app.js` – Logik für Timer, Reminder, Status, Routing zwischen den Views.
 - `workouts.json` – Workout-Plan im JSON-Format (hier Uhrzeiten + Inhalte bearbeiten).
-- `alert.mp3` – Audio-Datei für den Alarm (selbst bereitstellen, gleiche Ebene wie `index.html`).
 
 ## Anpassungen
 

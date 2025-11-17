@@ -1,37 +1,39 @@
 {
+  "sets": 2,
+  "repeats": 3,
   "workouts": [
     {
       "id": "morning",
       "time": "10:30",
       "title": "1 - Rücken & Bizeps",
       "label": "Morgens",
-	  "grip": "Schulterbreiter Untergriff",
-      "exercises": [
-        "Klimmzüge: 2-3 Wiederholungen, 60-90 Sekunden Pause, zweiter Satz 2-3 Wiederholungen",
-        "Hanging Knee Raises: 6-10 Wiederholungen"
-      ]
-    },
+      "grip": "Schulterbreiter Untergriff",
+        "exercises": [
+          "Klimmzüge: [SETS] Sets - [REPEATS] Wiederholungen",
+          "Hanging Knee Raises: [SETS*REPEATS*1.5] Wiederholungen"
+        ]
+      },
     {
       "id": "afternoon",
-      "time": "15:00",
+      "time": "13:45",
       "title": "2 - Schultern & oberer Rücken",
       "label": "Nachmittags",
-	  "grip": "Weiter Obergriff",
-      "exercises": [
-        "Breite Klimmzüge: 1-2 Wiederholungen, Pause, zweiter Satz 1-2 Wiederholungen",
-        "Scapular Pull-ups: 5-8 Wiederholungen"
-      ]
-    },
+      "grip": "Weiter Obergriff",
+        "exercises": [
+          "Klimmzüge: [SETS] Sets - [REPEATS-1] Wiederholungen",
+          "Scapular Pull-ups: [SETS*REPEATS*1.3] Wiederholungen"
+        ]
+      },
     {
       "id": "evening",
-      "time": "19:00",
+      "time": "17:30",
       "title": "3 - Arme & Bauch",
       "label": "Abends",
-	  "grip": "Neutralgriff",
-      "exercises": [
-        "Klimmzüge: 2-3 Wiederholungen, Pause, zweiter Satz 2-3 Wiederholungen",
-        "Bauch: 15-25 Sekunden Hollow Hold oder 5-8 Beinhebungen"
-      ]
-    }
+      "grip": "Neutralgriff",
+        "exercises": [
+          "Klimmzüge: [SETS] Sets - [REPEATS] Wiederholungen",
+          "Bauch: [SETS*REPEATS*1.3] Beinhebungen"
+        ]
+      }
   ]
 }

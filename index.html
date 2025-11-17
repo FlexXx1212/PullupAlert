@@ -24,6 +24,16 @@
       <p class="hint">
         Workouts werden automatisch zur richtigen Uhrzeit gestartet. Du kannst sie auch manuell öffnen.
       </p>
+      <form id="settingsForm" class="settings-form" style="margin-bottom: 1.5em;">
+        <label for="setsInput" style="margin-right:1em;">
+          Max. Sets:
+          <input type="number" id="setsInput" min="1" max="99" style="width:3em;" />
+        </label>
+        <label for="repeatsInput">
+          Max. Wiederholungen:
+          <input type="number" id="repeatsInput" min="1" max="99" style="width:3em;" />
+        </label>
+      </form>
       <div id="workoutList" class="workout-list">
         <!-- Karten werden per JS eingefügt -->
       </div>
@@ -61,10 +71,6 @@
       </div>
     </section>
   </main>
-
-  <!-- Audio-Alert: Du musst die Datei alert.mp3 selbst in den gleichen Ordner legen -->
-  <audio id="alertSound" src="alert.mp3" preload="auto"></audio>
-
   <script src="app.js"></script>
 </body>
 </html>
