@@ -1,0 +1,37 @@
+{
+  "workouts": [
+    {
+      "id": "morning",
+      "time": "10:30",
+      "title": "Einheit 1 – Rücken & Bizeps",
+      "label": "Morgens",
+      "exercises": [
+        "Griff: Schulterbreiter Untergriff",
+        "Klimmzüge: 2–3 Wiederholungen, 60–90 Sekunden Pause, zweiter Satz 2–3 Wiederholungen",
+        "Optional: Hanging Knee Raises 6–10 Wiederholungen"
+      ]
+    },
+    {
+      "id": "afternoon",
+      "time": "15:00",
+      "title": "Einheit 2 – Schultern & oberer Rücken",
+      "label": "Nachmittags",
+      "exercises": [
+        "Griff: Weiter Obergriff",
+        "Breite Klimmzüge: 1–2 Wiederholungen, Pause, zweiter Satz 1–2 Wiederholungen",
+        "Scapular Pull-ups: 5–8 Wiederholungen"
+      ]
+    },
+    {
+      "id": "evening",
+      "time": "19:00",
+      "title": "Einheit 3 – Arme & Bauch",
+      "label": "Abends",
+      "exercises": [
+        "Griff: Neutralgriff",
+        "Klimmzüge: 2–3 Wiederholungen, Pause, zweiter Satz 2–3 Wiederholungen",
+        "Bauch: 15–25 Sekunden Hollow Hold oder 5–8 Beinhebungen"
+      ]
+    }
+  ]
+}

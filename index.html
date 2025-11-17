@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pullup Alert</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app">
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="app-title">Pullup Alert</h1>
+        <p class="app-subtitle">Deine tägliche Klimmzug-Routine</p>
+      </div>
+      <div class="header-right">
+        <span id="currentTime" class="current-time" aria-label="Aktuelle Uhrzeit"></span>
+      </div>
+    </header>
+
+    <!-- Übersicht aller Workouts -->
+    <section id="overviewView" class="view view--active" aria-label="Übersicht Workouts">
+      <h2>Heutige Workouts</h2>
+      <p class="hint">
+        Workouts werden automatisch zur richtigen Uhrzeit gestartet. Du kannst sie auch manuell öffnen.
+      </p>
+      <div id="workoutList" class="workout-list">
+        <!-- Karten werden per JS eingefügt -->
+      </div>
+    </section>
+
+    <!-- Aktives Workout -->
+    <section id="activeView" class="view view--hidden" aria-label="Aktives Workout">
+      <button id="backToOverview" class="btn btn--ghost">
+        ← Zur Übersicht
+      </button>
+
+      <div class="active-container">
+        <div class="active-header">
+          <h2 id="activeTitle" class="active-title"></h2>
+          <p id="activeLabel" class="active-label"></p>
+          <p id="activeTime" class="active-time"></p>
+        </div>
+
+        <div class="active-body">
+          <ul id="activeExercises" class="exercise-list">
+            <!-- Übungen per JS -->
+          </ul>
+        </div>
+
+        <div class="active-footer">
+          <div class="timer-wrapper" aria-label="75 Sekunden Timer">
+            <span id="countdown" class="timer-number">75</span>
+            <span class="timer-unit">Sekunden</span>
+          </div>
+          <button id="completeButton" class="btn btn--primary">
+            Workout abschließen
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Audio-Alert: Du musst die Datei alert.mp3 selbst in den gleichen Ordner legen -->
+  <audio id="alertSound" src="alert.mp3" preload="auto"></audio>
+
+  <script src="app.js"></script>
+</body>
+</html>
