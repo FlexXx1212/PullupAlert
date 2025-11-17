@@ -267,6 +267,7 @@ function showActiveWorkout(workout) {
   $("#activeTitle").textContent = workout.title;
   $("#activeLabel").textContent = workout.label || "";
   $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
+  $("#activeGrip").textContent = `Griff: ${workout.grip}`;
 
   const list = $("#activeExercises");
   list.innerHTML = "";

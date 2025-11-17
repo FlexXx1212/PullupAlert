@@ -304,6 +304,13 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.active-grip {
+  margin: 64px 0 0;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 .active-body {
   flex: 1;
   display: flex;
