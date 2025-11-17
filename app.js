@@ -302,8 +302,8 @@ function renderOverview() {
     const actionBtn = document.createElement("button");
     actionBtn.type = "button";
     actionBtn.className = "btn btn--primary";
-    actionBtn.textContent = workout.completed ? "Erledigt" : "Starten";
-    actionBtn.disabled = workout.completed;
+    actionBtn.textContent = workout.completed ? "Vorschau" : "Starten";
+    actionBtn.disabled = false;
     actionBtn.dataset.action = "openWorkout";
     actionBtn.dataset.workoutId = workout.id;
     meta.appendChild(statusEl);
@@ -332,8 +332,18 @@ function showActiveWorkout(workout) {
     li.textContent = resolveExerciseText(text, sets, repeats);
     list.appendChild(li);
   });
+  // Vorschau-Modus für erledigte Workouts
+  const footer = document.querySelector('.active-footer');
+  const container = document.querySelector('.active-container');
+  if (workout.completed) {
+    if (footer) footer.style.display = 'none';
+    if (container) container.classList.add('preview-mode');
+  } else {
+    if (footer) footer.style.display = '';
+    if (container) container.classList.remove('preview-mode');
+    startCountdown();
+  }
   showView("activeView");
-  startCountdown();
 }
 
 // Abschluss / Rückkehr zur Übersicht
@@ -353,6 +363,7 @@ function setupReminderTicker() {
     updateCurrentTimeDisplay();
     const now = new Date();
     const todayKey = getTodayKey();
+    let needsRerender = false;
     workouts.forEach((w) => {
       if (w.lastDayKey !== todayKey) {
         w.completed = false;
@@ -360,6 +371,7 @@ function setupReminderTicker() {
         w.nextReminderAt = null;
         w.dateTime = parseTimeToTodayDate(w.time);
         w.lastDayKey = todayKey;
+        needsRerender = true;
       }
       if (w.completed) return;
       if (!w.dateTime) return;
@@ -369,6 +381,7 @@ function setupReminderTicker() {
           w.dateTime.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000
         );
         triggerWorkoutAlert(w, false);
+        needsRerender = true;
       } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
         triggerWorkoutAlert(w, true);
         while (w.nextReminderAt <= now) {
@@ -378,7 +391,7 @@ function setupReminderTicker() {
         }
       }
     });
-    renderOverview();
+    if (needsRerender) renderOverview();
   }, 1000);
 }
 
@@ -402,7 +415,7 @@ function setupEventListeners() {
     if (target.dataset.action === "openWorkout") {
       const workoutId = target.dataset.workoutId;
       const workout = workouts.find((w) => w.id === workoutId);
-      if (workout && !workout.completed) {
+      if (workout) {
         showActiveWorkout(workout);
       }
     }

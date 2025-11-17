@@ -1,3 +1,9 @@
+/* Vorschau-Modus für erledigte Workouts */
+.preview-mode {
+  opacity: 0.6;
+  filter: grayscale(0.5);
+  pointer-events: auto;
+}
 /* Einstellungen (Settings) */
 .settings-form {
   display: flex;
