@@ -8,32 +8,42 @@
       "title": "1 - Rücken & Bizeps",
       "label": "Morgens",
       "grip": "Schulterbreiter Untergriff",
-        "exercises": [
-          "Klimmzüge: [SETS] Sets - [REPEATS] Wiederholungen",
-          "Hanging Knee Raises: [SETS*REPEATS*1.5] Wiederholungen"
-        ]
-      },
+      "exercises": [
+        "Klimmzüge: [SETS] Sets - [REPEATS] Wiederholungen",
+        "Hanging Knee Raises: [SETS*REPEATS*1.5] Wiederholungen"
+      ]
+    },
+    {
+      "id": "noon",
+      "time": "11:15",
+      "title": "2 - Ganzkörper Workout",
+      "label": "Mittags",
+      "grip": "-",
+      "exercises": [
+        "BetterMe App Workout"
+      ]
+    },
     {
       "id": "afternoon",
       "time": "13:45",
-      "title": "2 - Schultern & oberer Rücken",
+      "title": "3 - Schultern & oberer Rücken",
       "label": "Nachmittags",
       "grip": "Weiter Obergriff",
-        "exercises": [
-          "Klimmzüge: [SETS] Sets - [REPEATS-1] Wiederholungen",
-          "Scapular Pull-ups: [SETS*REPEATS*1.3] Wiederholungen"
-        ]
-      },
+      "exercises": [
+        "Klimmzüge: [SETS] Sets - [REPEATS-1] Wiederholungen",
+        "Scapular Pull-ups: [SETS*REPEATS*1.3] Wiederholungen"
+      ]
+    },
     {
       "id": "evening",
       "time": "17:30",
-      "title": "3 - Arme & Bauch",
+      "title": "4 - Arme & Bauch",
       "label": "Abends",
       "grip": "Neutralgriff",
-        "exercises": [
-          "Klimmzüge: [SETS] Sets - [REPEATS] Wiederholungen",
-          "Bauch: [SETS*REPEATS*1.3] Beinhebungen"
-        ]
-      }
+      "exercises": [
+        "Klimmzüge: [SETS] Sets - [REPEATS] Wiederholungen",
+        "Bauch: [SETS*REPEATS*1.3] Beinhebungen"
+      ]
+    }
   ]
 }
