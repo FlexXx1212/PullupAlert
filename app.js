@@ -472,7 +472,15 @@ function showActiveWorkout(workout) {
   $("#activeTitle").textContent = workout.title;
   $("#activeLabel").textContent = workout.label || "";
   $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
-  $("#activeGrip").textContent = `Griff: ${workout.grip}`;
+
+  const gripEl = $("#activeGrip");
+  if (workout.grip && workout.grip !== "-") {
+    gripEl.textContent = `Griff: ${workout.grip}`;
+    gripEl.style.display = "";
+  } else {
+    gripEl.style.display = "none";
+  }
+
   const list = $("#activeExercises");
   list.innerHTML = "";
 
@@ -591,7 +599,7 @@ function openModal(workout = null) {
     $("#wfTitle").value = workout.title;
     $("#wfLabel").value = workout.label || "";
     $("#wfTime").value = workout.time;
-    $("#wfGrip").value = workout.grip || "-";
+    $("#wfGrip").value = (workout.grip && workout.grip !== "-") ? workout.grip : "";
     $("#wfExercises").value = (workout.exercises || []).join("\n");
 
     (workout.days || []).forEach(day => {
@@ -641,7 +649,7 @@ function handleModalSubmit(e) {
   const title = $("#wfTitle").value;
   const label = $("#wfLabel").value;
   const time = $("#wfTime").value;
-  const grip = $("#wfGrip").value;
+  const grip = $("#wfGrip").value.trim(); // Empty string if not provided
   const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
 
   const selectedDays = Array.from(document.querySelectorAll("#wfDaysContainer input:checked"))
