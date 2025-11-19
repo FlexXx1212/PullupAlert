@@ -197,6 +197,12 @@ body {
   filter: grayscale(0.6);
 }
 
+/* Markierung für Workouts, die heute nicht stattfinden */
+.workout-card--not-today {
+  opacity: 0.5;
+  filter: grayscale(0.4);
+}
+
 .workout-card-header {
   display: flex;
   justify-content: space-between;
@@ -253,6 +259,21 @@ body {
 .workout-status--overdue {
   border-color: rgba(255, 75, 92, 0.4);
   color: var(--danger);
+}
+
+/* Status für Workouts, die heute nicht stattfinden */
+.workout-status--not-today {
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+/* Kleines Label für Wochentage */
+.workout-days {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
 }
 
 /* Buttons */

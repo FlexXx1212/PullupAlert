@@ -34,6 +34,7 @@ function resolveExerciseText(text, sets, repeats) {
     }
   });
 }
+
 // Pullup Alert – SPA-Logik
 // - Workouts & Zeiten werden ausschließlich in workouts.json gepflegt
 // - Abschluss-Status wird pro Tag in localStorage gespeichert
@@ -42,6 +43,18 @@ const BASE_TITLE = "Pullup Alert";
 const REMINDER_INTERVAL_MINUTES = 30;
 const TIMER_DURATION_SECONDS = 75;
 const STORAGE_KEY = "pullup-alert-completions";
+
+// Wochentag-Mapping (Deutsch → Date.getDay Index)
+const WEEKDAY_MAP = {
+  So: 0,
+  Mo: 1,
+  Di: 2,
+  Mi: 3,
+  Do: 4,
+  Fr: 5,
+  Sa: 6,
+};
+const ALL_WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
 let workouts = []; // wird aus workouts.json geladen
 let currentWorkout = null;
@@ -58,18 +71,21 @@ function requestNotificationPermission() {
       Notification.requestPermission().catch(() => {});
     } catch (err) {
       console.warn("Notification permission request failed", err);
-    }    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        stopTitleBlink();
-      }
-    });
+    }
   }
+  // Wenn der Tab wieder aktiv wird, Blinken stoppen
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      stopTitleBlink();
+    }
+  });
 }
 
 // Erstellt eine Desktop‑Benachrichtigung für ein fälliges Workout.
 function sendWorkoutNotification(workout, isReminder) {
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
+  // Zeige keine Notification, wenn der Tab sichtbar ist
   if (document.visibilityState == "visible") return;
   const title = isReminder ? "Workout Erinnerung" : "Workout jetzt starten";
   const body = workout.title;
@@ -188,12 +204,11 @@ function stopTitleBlink() {
 }
 
 // Audio
-
 function playAlertSound() {
+  // Spiele Sound nur, wenn Seite sichtbar ist (Autoplay-Beschränkungen)
   if (document.visibilityState !== "visible") return;
   const audio = $("#alertSound");
   if (!audio) return;
-  // Hinweis: Browser blocken evtl. Autoplay ohne vorherige User-Interaktion
   audio.currentTime = 0;
   audio
     .play()
@@ -233,14 +248,28 @@ async function loadWorkouts() {
   const settings = loadSettings();
   window.defaultSets = data.sets;
   window.defaultRepeats = data.repeats;
-  window.sets = typeof settings.sets === 'number' ? settings.sets : data.sets;
-  window.repeats = typeof settings.repeats === 'number' ? settings.repeats : data.repeats;
+  window.sets = typeof settings.sets === "number" ? settings.sets : data.sets;
+  window.repeats = typeof settings.repeats === "number" ? settings.repeats : data.repeats;
   const todayKey = getTodayKey();
+  const todayDayIndex = new Date().getDay();
   workouts = (data.workouts || []).map((w) => {
     const dateTime = parseTimeToTodayDate(w.time);
+    // Wochentage aus dem JSON lesen; wenn nicht definiert, alle Tage
+    let daysArr;
+    if (Array.isArray(w.days) && w.days.length > 0) {
+      daysArr = w.days;
+    } else {
+      daysArr = ALL_WEEKDAYS;
+    }
+    // in Indexe umwandeln
+    const daysIndex = daysArr.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
+    const isToday = daysIndex.includes(todayDayIndex);
     return {
       ...w,
       dateTime,
+      days: daysArr,
+      daysIndex,
+      isToday,
       alertedInitially: false,
       nextReminderAt: null,
       completed: isWorkoutCompleted(w.id),
@@ -258,7 +287,6 @@ function renderOverview() {
     setsInput.value = window.sets;
     repeatsInput.value = window.repeats;
   }
-
   const container = $("#workoutList");
   if (!container) return;
   container.innerHTML = "";
@@ -266,10 +294,16 @@ function renderOverview() {
   workouts.forEach((workout) => {
     const card = document.createElement("article");
     card.className = "workout-card";
+    // Klasse für erledigte Workouts
     if (workout.completed) {
       card.classList.add("workout-card--completed");
     }
+    // Klasse für Workouts, die nicht am heutigen Tag stattfinden
+    if (!workout.isToday && !workout.completed) {
+      card.classList.add("workout-card--not-today");
+    }
     card.dataset.workoutId = workout.id;
+    // Header
     const header = document.createElement("div");
     header.className = "workout-card-header";
     const timeEl = document.createElement("div");
@@ -280,9 +314,11 @@ function renderOverview() {
     labelEl.textContent = workout.label || "";
     header.appendChild(timeEl);
     header.appendChild(labelEl);
+    // Titel
     const titleEl = document.createElement("h3");
     titleEl.className = "workout-title";
     titleEl.textContent = workout.title;
+    // Meta + Status + Action
     const meta = document.createElement("div");
     meta.className = "workout-meta";
     const statusEl = document.createElement("span");
@@ -291,6 +327,10 @@ function renderOverview() {
     if (workout.completed) {
       statusText = "Heute abgeschlossen";
       statusEl.classList.add("workout-status--completed");
+    } else if (!workout.isToday) {
+      // Nicht heutiger Tag
+      statusText = "Nicht heute";
+      statusEl.classList.add("workout-status--not-today");
     } else if (now >= workout.dateTime) {
       statusText = "Fällig";
       statusEl.classList.add("workout-status--overdue");
@@ -302,15 +342,29 @@ function renderOverview() {
     const actionBtn = document.createElement("button");
     actionBtn.type = "button";
     actionBtn.className = "btn btn--primary";
-    actionBtn.textContent = workout.completed ? "Vorschau" : "Starten";
+    // Button-Text und Aktionsregeln
+    if (workout.completed) {
+      actionBtn.textContent = "Vorschau";
+    } else if (!workout.isToday) {
+      actionBtn.textContent = "Vorschau";
+    } else {
+      actionBtn.textContent = "Starten";
+    }
     actionBtn.disabled = false;
     actionBtn.dataset.action = "openWorkout";
     actionBtn.dataset.workoutId = workout.id;
     meta.appendChild(statusEl);
     meta.appendChild(actionBtn);
+    // Wochentage-Label hinzufügen
+    const daysEl = document.createElement("div");
+    daysEl.className = "workout-days";
+    // Wenn Tage definiert, zeige sie, ansonsten leere Zeichenfolge
+    daysEl.textContent = (workout.days || []).join(", ");
+    // Zusammenbauen der Karte
     card.appendChild(header);
     card.appendChild(titleEl);
     card.appendChild(meta);
+    card.appendChild(daysEl);
     container.appendChild(card);
   });
 }
@@ -325,17 +379,17 @@ function showActiveWorkout(workout) {
   const list = $("#activeExercises");
   list.innerHTML = "";
   // Hole sets und repeats aus globalen Daten (workouts.json oder Settings)
-  const sets = typeof window.sets === 'number' ? window.sets : window.defaultSets || 2;
-  const repeats = typeof window.repeats === 'number' ? window.repeats : window.defaultRepeats || 3;
+  const sets = typeof window.sets === "number" ? window.sets : window.defaultSets || 2;
+  const repeats = typeof window.repeats === "number" ? window.repeats : window.defaultRepeats || 3;
   (workout.exercises || []).forEach((text) => {
     const li = document.createElement("li");
     li.textContent = resolveExerciseText(text, sets, repeats);
     list.appendChild(li);
   });
-  // Vorschau-Modus für erledigte Workouts
   const footer = document.querySelector('.active-footer');
   const container = document.querySelector('.active-container');
-  if (workout.completed) {
+  // Vorschau-Modus für erledigte oder nicht-heutige Workouts
+  if (workout.completed || !workout.isToday) {
     if (footer) footer.style.display = 'none';
     if (container) container.classList.add('preview-mode');
   } else {
@@ -363,18 +417,25 @@ function setupReminderTicker() {
     updateCurrentTimeDisplay();
     const now = new Date();
     const todayKey = getTodayKey();
+    const todayDayIndex = now.getDay();
     let needsRerender = false;
     workouts.forEach((w) => {
+      // Falls Tag gewechselt wurde (Seite lief über Mitternacht)
       if (w.lastDayKey !== todayKey) {
         w.completed = false;
         w.alertedInitially = false;
         w.nextReminderAt = null;
         w.dateTime = parseTimeToTodayDate(w.time);
         w.lastDayKey = todayKey;
+        // Aktualisiere isToday basierend auf daysIndex
+        w.isToday = w.daysIndex.includes(todayDayIndex);
         needsRerender = true;
       }
+      // Erledigte oder nicht-heutige Workouts überspringen
       if (w.completed) return;
+      if (!w.isToday) return;
       if (!w.dateTime) return;
+      // Noch kein Erst-Alert → sobald Zeit erreicht ist, auslösen
       if (!w.alertedInitially && now >= w.dateTime) {
         w.alertedInitially = true;
         w.nextReminderAt = new Date(
@@ -383,10 +444,13 @@ function setupReminderTicker() {
         triggerWorkoutAlert(w, false);
         needsRerender = true;
       } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
+        // Reminder alle 30 Minuten, solange nicht abgeschlossen
         triggerWorkoutAlert(w, true);
+        // Nächste Reminderzeit setzen, evtl. mehrfach nachholen, falls Seite länger inaktiv
         while (w.nextReminderAt <= now) {
           w.nextReminderAt = new Date(
-            w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000
+            w.nextReminderAt.getTime() +
+              REMINDER_INTERVAL_MINUTES * 60 * 1000
           );
         }
       }
