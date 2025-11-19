@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,6 +8,7 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
+
 <body>
   <main id="app">
     <header class="app-header">
@@ -21,20 +23,35 @@
 
     <!-- Übersicht aller Workouts -->
     <section id="overviewView" class="view view--active" aria-label="Übersicht Workouts">
-      <h2>Heutige Workouts</h2>
+      <div class="overview-header">
+        <h2>Heutige Workouts</h2>
+        <button id="addWorkoutBtn" class="btn btn--ghost" aria-label="Neues Workout erstellen">
+          + Neu
+        </button>
+      </div>
       <p class="hint">
         Workouts werden automatisch zur richtigen Uhrzeit gestartet. Du kannst sie auch manuell öffnen.
       </p>
-      <form id="settingsForm" class="settings-form" style="margin-bottom: 1.5em;">
-        <label for="setsInput" style="margin-right:1em;">
-          Max. Sets:
-          <input type="number" id="setsInput" min="1" max="99" style="width:3em;" />
-        </label>
-        <label for="repeatsInput">
-          Max. Wiederholungen:
-          <input type="number" id="repeatsInput" min="1" max="99" style="width:3em;" />
-        </label>
+
+      <form id="settingsForm" class="settings-form">
+        <div class="setting-group">
+          <label for="setsInput">Max. Sets:</label>
+          <div class="number-control">
+            <button type="button" class="btn-control" data-action="dec" data-target="setsInput">-</button>
+            <input type="number" id="setsInput" min="1" max="99" readonly />
+            <button type="button" class="btn-control" data-action="inc" data-target="setsInput">+</button>
+          </div>
+        </div>
+        <div class="setting-group">
+          <label for="repeatsInput">Max. Wiederholungen:</label>
+          <div class="number-control">
+            <button type="button" class="btn-control" data-action="dec" data-target="repeatsInput">-</button>
+            <input type="number" id="repeatsInput" min="1" max="99" readonly />
+            <button type="button" class="btn-control" data-action="inc" data-target="repeatsInput">+</button>
+          </div>
+        </div>
       </form>
+
       <div id="workoutList" class="workout-list">
         <!-- Karten werden per JS eingefügt -->
       </div>
@@ -51,7 +68,7 @@
           <h2 id="activeTitle" class="active-title"></h2>
           <p id="activeLabel" class="active-label"></p>
           <p id="activeTime" class="active-time"></p>
-		  <p id="activeGrip" class="active-grip"></p>
+          <p id="activeGrip" class="active-grip"></p>
         </div>
 
         <div class="active-body">
@@ -71,7 +88,73 @@
         </div>
       </div>
     </section>
+
+    <!-- Workout Editor Modal -->
+    <div id="workoutModal" class="modal modal--hidden" aria-hidden="true">
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Workout bearbeiten</h2>
+          <button id="closeModalBtn" class="btn-icon" aria-label="Schließen">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="workoutForm">
+            <input type="hidden" id="editWorkoutId" />
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="wfTitle">Titel</label>
+                <input type="text" id="wfTitle" required placeholder="z.B. Rücken & Bizeps" />
+              </div>
+              <div class="form-group">
+                <label for="wfLabel">Label (optional)</label>
+                <input type="text" id="wfLabel" placeholder="z.B. Morgens" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="wfTime">Uhrzeit</label>
+                <input type="time" id="wfTime" required />
+              </div>
+              <div class="form-group">
+                <label for="wfGrip">Griffart</label>
+                <input type="text" id="wfGrip" placeholder="z.B. Weiter Obergriff" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Wochentage</label>
+              <div class="days-checkboxes" id="wfDaysContainer">
+                <!-- Checkboxen per JS -->
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="wfExercises">Übungen (eine pro Zeile)</label>
+              <textarea id="wfExercises" rows="4" placeholder="Klimmzüge: [SETS] Sets - [REPEATS] Reps"></textarea>
+              <p class="hint-small">
+                Platzhalter: <code>[SETS]</code>, <code>[REPEATS]</code>. Mathe erlaubt: <code>[SETS*2]</code>, <code>[REPEATS+5]</code>.
+              </p>
+            </div>
+
+            <div class="preview-box">
+              <span class="preview-label">Vorschau (Erste Zeile):</span>
+              <span id="wfPreview" class="preview-content">-</span>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" id="deleteWorkoutBtn" class="btn btn--danger" style="display: none;">Löschen</button>
+              <div class="spacer"></div>
+              <button type="button" id="cancelModalBtn" class="btn btn--ghost">Abbrechen</button>
+              <button type="submit" class="btn btn--primary">Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </main>
   <script src="app.js"></script>
 </body>
+
 </html>

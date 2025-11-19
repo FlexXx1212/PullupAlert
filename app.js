@@ -1,5 +1,6 @@
 // Konstanten für Settings-Storage
 const SETTINGS_KEY = "pullup-alert-settings";
+const WORKOUTS_KEY = "pullup-alert-workouts"; // Neuer Key für Workouts
 
 // Settings laden/speichern
 function loadSettings() {
@@ -15,7 +16,7 @@ function loadSettings() {
 function saveSettings(settings) {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {}
+  } catch { }
 }
 
 // Platzhalter in Übungstexten ersetzen, inkl. Mathe-Ausdrücke
@@ -36,7 +37,7 @@ function resolveExerciseText(text, sets, repeats) {
 }
 
 // Pullup Alert – SPA-Logik
-// - Workouts & Zeiten werden ausschließlich in workouts.json gepflegt
+// - Workouts & Zeiten werden jetzt primär aus localStorage geladen
 // - Abschluss-Status wird pro Tag in localStorage gespeichert
 
 const BASE_TITLE = "Pullup Alert";
@@ -55,25 +56,25 @@ const WEEKDAY_MAP = {
   Sa: 6,
 };
 const ALL_WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+// Mapping Index -> Kürzel für UI
+const INDEX_TO_WEEKDAY = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
-let workouts = []; // wird aus workouts.json geladen
+let workouts = [];
 let currentWorkout = null;
 let countdownIntervalId = null;
 let blinkIntervalId = null;
 let isBlinking = false;
 
 // ---- Notification API ----
-// Fordert beim Initialisieren der App die Berechtigung für Desktop‑Benachrichtigungen an.
 function requestNotificationPermission() {
   if (typeof Notification === "undefined") return;
   if (Notification.permission === "default") {
     try {
-      Notification.requestPermission().catch(() => {});
+      Notification.requestPermission().catch(() => { });
     } catch (err) {
       console.warn("Notification permission request failed", err);
     }
   }
-  // Wenn der Tab wieder aktiv wird, Blinken stoppen
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       stopTitleBlink();
@@ -81,11 +82,9 @@ function requestNotificationPermission() {
   });
 }
 
-// Erstellt eine Desktop‑Benachrichtigung für ein fälliges Workout.
 function sendWorkoutNotification(workout, isReminder) {
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
-  // Zeige keine Notification, wenn der Tab sichtbar ist
   if (document.visibilityState == "visible") return;
   const title = isReminder ? "Workout Erinnerung" : "Workout jetzt starten";
   const body = workout.title;
@@ -95,7 +94,7 @@ function sendWorkoutNotification(workout, isReminder) {
       event.preventDefault();
       try {
         window.focus();
-      } catch (_) {}
+      } catch (_) { }
     };
   } catch (err) {
     console.warn("Konnte Notification nicht erstellen", err);
@@ -205,14 +204,9 @@ function stopTitleBlink() {
 
 // Audio
 function playAlertSound() {
-  // Spiele Sound nur, wenn Seite sichtbar ist (Autoplay-Beschränkungen)
   if (document.visibilityState !== "visible") return;
-  const audio = $("#alertSound");
-  if (!audio) return;
-  audio.currentTime = 0;
-  audio
-    .play()
-    .catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
+  const audio = new Audio("alert.mp3"); // Dynamisch erstellen, da kein HTML-Tag mehr nötig
+  audio.play().catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
 }
 
 // Timer
@@ -237,33 +231,58 @@ function startCountdown() {
   }, 1000);
 }
 
-// Workouts aus JSON laden & anreichern
+// ---- WORKOUT MANAGEMENT ----
+
+// Workouts laden (localStorage > JSON)
 async function loadWorkouts() {
-  const response = await fetch("workouts.json", { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error("Konnte workouts.json nicht laden");
+  // 1. Versuche aus localStorage zu laden
+  const localRaw = localStorage.getItem(WORKOUTS_KEY);
+  let dataWorkouts = [];
+  let dataSets = 2;
+  let dataRepeats = 3;
+
+  if (localRaw) {
+    const parsed = JSON.parse(localRaw);
+    dataWorkouts = parsed.workouts || [];
+    // Sets/Repeats aus Settings laden, Fallback auf JSON-Werte nicht nötig, da Settings global sind
+  } else {
+    // 2. Fallback: JSON laden und in localStorage speichern (Migration)
+    try {
+      const response = await fetch("workouts.json", { cache: "no-store" });
+      if (response.ok) {
+        const jsonData = await response.json();
+        dataWorkouts = jsonData.workouts || [];
+        dataSets = jsonData.sets;
+        dataRepeats = jsonData.repeats;
+
+        // Initial speichern
+        saveWorkoutsToStorage(dataWorkouts);
+        // Settings auch initial speichern, falls noch nicht vorhanden
+        const currentSettings = loadSettings();
+        if (!currentSettings.sets) {
+          saveSettings({ ...currentSettings, sets: dataSets, repeats: dataRepeats });
+        }
+      }
+    } catch (err) {
+      console.error("Konnte workouts.json nicht laden", err);
+    }
   }
-  const data = await response.json();
-  // sets & repeats global speichern für resolveExerciseText
+
+  // Globale Settings aktualisieren
   const settings = loadSettings();
-  window.defaultSets = data.sets;
-  window.defaultRepeats = data.repeats;
-  window.sets = typeof settings.sets === "number" ? settings.sets : data.sets;
-  window.repeats = typeof settings.repeats === "number" ? settings.repeats : data.repeats;
+  window.sets = typeof settings.sets === "number" ? settings.sets : dataSets;
+  window.repeats = typeof settings.repeats === "number" ? settings.repeats : dataRepeats;
+
+  // Workouts verarbeiten
   const todayKey = getTodayKey();
   const todayDayIndex = new Date().getDay();
-  workouts = (data.workouts || []).map((w) => {
+
+  workouts = dataWorkouts.map((w) => {
     const dateTime = parseTimeToTodayDate(w.time);
-    // Wochentage aus dem JSON lesen; wenn nicht definiert, alle Tage
-    let daysArr;
-    if (Array.isArray(w.days) && w.days.length > 0) {
-      daysArr = w.days;
-    } else {
-      daysArr = ALL_WEEKDAYS;
-    }
-    // in Indexe umwandeln
+    let daysArr = Array.isArray(w.days) && w.days.length > 0 ? w.days : ALL_WEEKDAYS;
     const daysIndex = daysArr.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
     const isToday = daysIndex.includes(todayDayIndex);
+
     return {
       ...w,
       dateTime,
@@ -278,31 +297,111 @@ async function loadWorkouts() {
   });
 }
 
+function saveWorkoutsToStorage(workoutsData) {
+  // Wir speichern nur die reinen Daten, ohne Laufzeit-Properties
+  const cleanWorkouts = workoutsData.map(w => ({
+    id: w.id,
+    time: w.time,
+    title: w.title,
+    label: w.label,
+    grip: w.grip,
+    days: w.days,
+    exercises: w.exercises
+  }));
+  localStorage.setItem(WORKOUTS_KEY, JSON.stringify({ workouts: cleanWorkouts }));
+}
+
+// CRUD
+function addWorkout(workoutData) {
+  const newId = "w_" + Date.now();
+  const newWorkout = { ...workoutData, id: newId };
+  // Zu lokaler Liste hinzufügen (mit Laufzeit-Props)
+  const todayKey = getTodayKey();
+  const todayDayIndex = new Date().getDay();
+  const dateTime = parseTimeToTodayDate(newWorkout.time);
+  const daysIndex = newWorkout.days.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
+  const isToday = daysIndex.includes(todayDayIndex);
+
+  const runtimeWorkout = {
+    ...newWorkout,
+    dateTime,
+    daysIndex,
+    isToday,
+    alertedInitially: false,
+    nextReminderAt: null,
+    completed: false,
+    lastDayKey: todayKey
+  };
+
+  workouts.push(runtimeWorkout);
+  workouts.sort((a, b) => a.time.localeCompare(b.time)); // Nach Zeit sortieren
+
+  saveWorkoutsToStorage(workouts);
+  renderOverview();
+}
+
+function updateWorkout(id, workoutData) {
+  const idx = workouts.findIndex(w => w.id === id);
+  if (idx === -1) return;
+
+  const oldWorkout = workouts[idx];
+  const todayDayIndex = new Date().getDay();
+  const dateTime = parseTimeToTodayDate(workoutData.time);
+  const daysIndex = workoutData.days.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
+  const isToday = daysIndex.includes(todayDayIndex);
+
+  workouts[idx] = {
+    ...oldWorkout,
+    ...workoutData,
+    dateTime,
+    daysIndex,
+    isToday
+  };
+  workouts.sort((a, b) => a.time.localeCompare(b.time));
+
+  saveWorkoutsToStorage(workouts);
+  renderOverview();
+}
+
+function deleteWorkout(id) {
+  if (!confirm("Wirklich löschen?")) return;
+  workouts = workouts.filter(w => w.id !== id);
+  saveWorkoutsToStorage(workouts);
+  renderOverview();
+}
+
 // Übersicht rendern
 function renderOverview() {
-  // Settings-Inputs initialisieren
+  // Inputs updaten
   const setsInput = $("#setsInput");
   const repeatsInput = $("#repeatsInput");
   if (setsInput && repeatsInput) {
     setsInput.value = window.sets;
     repeatsInput.value = window.repeats;
   }
+
   const container = $("#workoutList");
   if (!container) return;
   container.innerHTML = "";
   const now = new Date();
+
   workouts.forEach((workout) => {
     const card = document.createElement("article");
     card.className = "workout-card";
-    // Klasse für erledigte Workouts
-    if (workout.completed) {
-      card.classList.add("workout-card--completed");
-    }
-    // Klasse für Workouts, die nicht am heutigen Tag stattfinden
-    if (!workout.isToday && !workout.completed) {
-      card.classList.add("workout-card--not-today");
-    }
+    if (workout.completed) card.classList.add("workout-card--completed");
+    if (!workout.isToday && !workout.completed) card.classList.add("workout-card--not-today");
     card.dataset.workoutId = workout.id;
+
+    // Edit Button
+    const editBtn = document.createElement("button");
+    editBtn.className = "btn-edit";
+    editBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>`;
+    editBtn.onclick = (e) => {
+      e.stopPropagation();
+      openModal(workout);
+    };
+    card.appendChild(editBtn);
+
     // Header
     const header = document.createElement("div");
     header.className = "workout-card-header";
@@ -314,21 +413,22 @@ function renderOverview() {
     labelEl.textContent = workout.label || "";
     header.appendChild(timeEl);
     header.appendChild(labelEl);
+
     // Titel
     const titleEl = document.createElement("h3");
     titleEl.className = "workout-title";
     titleEl.textContent = workout.title;
-    // Meta + Status + Action
+
+    // Meta
     const meta = document.createElement("div");
     meta.className = "workout-meta";
     const statusEl = document.createElement("span");
     statusEl.className = "workout-status";
     let statusText;
     if (workout.completed) {
-      statusText = "Heute abgeschlossen";
+      statusText = "Abgeschlossen";
       statusEl.classList.add("workout-status--completed");
     } else if (!workout.isToday) {
-      // Nicht heutiger Tag
       statusText = "Nicht heute";
       statusEl.classList.add("workout-status--not-today");
     } else if (now >= workout.dateTime) {
@@ -339,28 +439,25 @@ function renderOverview() {
       statusEl.classList.add("workout-status--pending");
     }
     statusEl.textContent = statusText;
+
     const actionBtn = document.createElement("button");
     actionBtn.type = "button";
     actionBtn.className = "btn btn--primary";
-    // Button-Text und Aktionsregeln
-    if (workout.completed) {
-      actionBtn.textContent = "Vorschau";
-    } else if (!workout.isToday) {
+    if (workout.completed || !workout.isToday) {
       actionBtn.textContent = "Vorschau";
     } else {
       actionBtn.textContent = "Starten";
     }
-    actionBtn.disabled = false;
     actionBtn.dataset.action = "openWorkout";
     actionBtn.dataset.workoutId = workout.id;
+
     meta.appendChild(statusEl);
     meta.appendChild(actionBtn);
-    // Wochentage-Label hinzufügen
+
     const daysEl = document.createElement("div");
     daysEl.className = "workout-days";
-    // Wenn Tage definiert, zeige sie, ansonsten leere Zeichenfolge
     daysEl.textContent = (workout.days || []).join(", ");
-    // Zusammenbauen der Karte
+
     card.appendChild(header);
     card.appendChild(titleEl);
     card.appendChild(meta);
@@ -378,17 +475,16 @@ function showActiveWorkout(workout) {
   $("#activeGrip").textContent = `Griff: ${workout.grip}`;
   const list = $("#activeExercises");
   list.innerHTML = "";
-  // Hole sets und repeats aus globalen Daten (workouts.json oder Settings)
-  const sets = typeof window.sets === "number" ? window.sets : window.defaultSets || 2;
-  const repeats = typeof window.repeats === "number" ? window.repeats : window.defaultRepeats || 3;
+
   (workout.exercises || []).forEach((text) => {
     const li = document.createElement("li");
-    li.textContent = resolveExerciseText(text, sets, repeats);
+    li.textContent = resolveExerciseText(text, window.sets, window.repeats);
     list.appendChild(li);
   });
+
   const footer = document.querySelector('.active-footer');
   const container = document.querySelector('.active-container');
-  // Vorschau-Modus für erledigte oder nicht-heutige Workouts
+
   if (workout.completed || !workout.isToday) {
     if (footer) footer.style.display = 'none';
     if (container) container.classList.add('preview-mode');
@@ -400,7 +496,6 @@ function showActiveWorkout(workout) {
   showView("activeView");
 }
 
-// Abschluss / Rückkehr zur Übersicht
 function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
   currentWorkout.completed = true;
@@ -419,39 +514,30 @@ function setupReminderTicker() {
     const todayKey = getTodayKey();
     const todayDayIndex = now.getDay();
     let needsRerender = false;
+
     workouts.forEach((w) => {
-      // Falls Tag gewechselt wurde (Seite lief über Mitternacht)
       if (w.lastDayKey !== todayKey) {
         w.completed = false;
         w.alertedInitially = false;
         w.nextReminderAt = null;
         w.dateTime = parseTimeToTodayDate(w.time);
         w.lastDayKey = todayKey;
-        // Aktualisiere isToday basierend auf daysIndex
         w.isToday = w.daysIndex.includes(todayDayIndex);
         needsRerender = true;
       }
-      // Erledigte oder nicht-heutige Workouts überspringen
       if (w.completed) return;
       if (!w.isToday) return;
       if (!w.dateTime) return;
-      // Noch kein Erst-Alert → sobald Zeit erreicht ist, auslösen
+
       if (!w.alertedInitially && now >= w.dateTime) {
         w.alertedInitially = true;
-        w.nextReminderAt = new Date(
-          w.dateTime.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000
-        );
+        w.nextReminderAt = new Date(w.dateTime.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
         triggerWorkoutAlert(w, false);
         needsRerender = true;
       } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
-        // Reminder alle 30 Minuten, solange nicht abgeschlossen
         triggerWorkoutAlert(w, true);
-        // Nächste Reminderzeit setzen, evtl. mehrfach nachholen, falls Seite länger inaktiv
         while (w.nextReminderAt <= now) {
-          w.nextReminderAt = new Date(
-            w.nextReminderAt.getTime() +
-              REMINDER_INTERVAL_MINUTES * 60 * 1000
-          );
+          w.nextReminderAt = new Date(w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
         }
       }
     });
@@ -464,11 +550,141 @@ function triggerWorkoutAlert(workout, isReminder) {
   playAlertSound();
   startTitleBlink();
   sendWorkoutNotification(workout, isReminder);
-  console.log(
-    `Workout-Alert: ${workout.title} (${workout.time})`,
-    isReminder ? "[Reminder]" : "[Erst-Alert]"
-  );
 }
+
+// ---- MODAL LOGIC ----
+
+function openModal(workout = null) {
+  const modal = $("#workoutModal");
+  const form = $("#workoutForm");
+  const deleteBtn = $("#deleteWorkoutBtn");
+  const title = $("#modalTitle");
+
+  // Reset Form
+  form.reset();
+  $("#editWorkoutId").value = "";
+
+  // Wochentage generieren
+  const daysContainer = $("#wfDaysContainer");
+  daysContainer.innerHTML = "";
+  ALL_WEEKDAYS.forEach(day => {
+    const id = `day_${day}`;
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = id;
+    checkbox.value = day;
+    checkbox.className = "day-checkbox";
+
+    const label = document.createElement("label");
+    label.htmlFor = id;
+    label.className = "day-label";
+    label.textContent = day;
+
+    daysContainer.appendChild(checkbox);
+    daysContainer.appendChild(label);
+  });
+
+  if (workout) {
+    // Edit Mode
+    title.textContent = "Workout bearbeiten";
+    $("#editWorkoutId").value = workout.id;
+    $("#wfTitle").value = workout.title;
+    $("#wfLabel").value = workout.label || "";
+    $("#wfTime").value = workout.time;
+    $("#wfGrip").value = workout.grip || "-";
+    $("#wfExercises").value = (workout.exercises || []).join("\n");
+
+    (workout.days || []).forEach(day => {
+      const cb = daysContainer.querySelector(`input[value="${day}"]`);
+      if (cb) cb.checked = true;
+    });
+
+    deleteBtn.style.display = "block";
+    deleteBtn.onclick = () => {
+      deleteWorkout(workout.id);
+      closeModal();
+    };
+  } else {
+    // Create Mode
+    title.textContent = "Neues Workout";
+    deleteBtn.style.display = "none";
+    // Default: Alle Tage ausgewählt
+    daysContainer.querySelectorAll("input").forEach(cb => cb.checked = true);
+  }
+
+  updateModalPreview();
+  modal.classList.remove("modal--hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+  const modal = $("#workoutModal");
+  modal.classList.add("modal--hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function updateModalPreview() {
+  const text = $("#wfExercises").value;
+  const firstLine = text.split("\n")[0] || "";
+  if (!firstLine.trim()) {
+    $("#wfPreview").textContent = "-";
+    return;
+  }
+  const resolved = resolveExerciseText(firstLine, window.sets, window.repeats);
+  $("#wfPreview").textContent = resolved;
+}
+
+function handleModalSubmit(e) {
+  e.preventDefault();
+  const id = $("#editWorkoutId").value;
+  const title = $("#wfTitle").value;
+  const label = $("#wfLabel").value;
+  const time = $("#wfTime").value;
+  const grip = $("#wfGrip").value;
+  const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
+
+  const selectedDays = Array.from(document.querySelectorAll("#wfDaysContainer input:checked"))
+    .map(cb => cb.value);
+
+  const data = {
+    title,
+    label,
+    time,
+    grip,
+    days: selectedDays,
+    exercises
+  };
+
+  if (id) {
+    updateWorkout(id, data);
+  } else {
+    addWorkout(data);
+  }
+  closeModal();
+}
+
+// ---- CUSTOM INPUTS LOGIC ----
+function setupCustomInputs() {
+  document.querySelectorAll(".btn-control").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const action = btn.dataset.action;
+      const targetId = btn.dataset.target;
+      const input = document.getElementById(targetId);
+      if (!input) return;
+
+      let val = parseInt(input.value, 10) || 0;
+      if (action === "inc") val++;
+      if (action === "dec") val--;
+      if (val < 1) val = 1;
+      if (val > 99) val = 99;
+
+      input.value = val;
+      // Trigger change event manually
+      input.dispatchEvent(new Event("change"));
+    });
+  });
+}
+
 
 // Event-Handler
 function setupEventListeners() {
@@ -484,49 +700,58 @@ function setupEventListeners() {
       }
     }
   });
+
   $("#backToOverview").addEventListener("click", () => {
     stopCountdown();
     showView("overviewView");
     stopTitleBlink();
     document.title = BASE_TITLE;
   });
+
   $("#completeButton").addEventListener("click", () => {
     markCurrentWorkoutCompleted();
   });
+
+  // Modal Events
+  $("#addWorkoutBtn").addEventListener("click", () => openModal());
+  $("#closeModalBtn").addEventListener("click", closeModal);
+  $("#cancelModalBtn").addEventListener("click", closeModal);
+  $("#modalBackdrop").addEventListener("click", closeModal);
+  $("#workoutForm").addEventListener("submit", handleModalSubmit);
+  $("#wfExercises").addEventListener("input", updateModalPreview);
 }
 
 // Initialisierung
 async function initApp() {
-  try {
-    await loadWorkouts();
-  } catch (err) {
-    console.error(err);
-    alert(
-      "Fehler beim Laden der workouts.json. Bitte stelle sicher, dass die Datei vorhanden ist."
-    );
-    return;
-  }
+  await loadWorkouts();
   renderOverview();
   setupEventListeners();
+  setupCustomInputs();
+
   // Settings-Form Events
   const setsInput = $("#setsInput");
   const repeatsInput = $("#repeatsInput");
+
+  const updateSettings = () => {
+    let s = parseInt(setsInput.value, 10);
+    let r = parseInt(repeatsInput.value, 10);
+    if (isNaN(s) || s < 1) s = 2;
+    if (isNaN(r) || r < 1) r = 3;
+    window.sets = s;
+    window.repeats = r;
+    saveSettings({ sets: s, repeats: r });
+    renderOverview();
+    // Update Preview if modal is open
+    if (!$("#workoutModal").classList.contains("modal--hidden")) {
+      updateModalPreview();
+    }
+  };
+
   if (setsInput && repeatsInput) {
-    setsInput.addEventListener("change", () => {
-      let val = parseInt(setsInput.value, 10);
-      if (isNaN(val) || val < 1) val = window.defaultSets || 2;
-      window.sets = val;
-      saveSettings({ ...loadSettings(), sets: val, repeats: window.repeats });
-      renderOverview();
-    });
-    repeatsInput.addEventListener("change", () => {
-      let val = parseInt(repeatsInput.value, 10);
-      if (isNaN(val) || val < 1) val = window.defaultRepeats || 3;
-      window.repeats = val;
-      saveSettings({ ...loadSettings(), sets: window.sets, repeats: val });
-      renderOverview();
-    });
+    setsInput.addEventListener("change", updateSettings);
+    repeatsInput.addEventListener("change", updateSettings);
   }
+
   setupReminderTicker();
   updateCurrentTimeDisplay();
   document.title = BASE_TITLE;

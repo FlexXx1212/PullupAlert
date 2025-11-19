@@ -4,6 +4,7 @@
   filter: grayscale(0.5);
   pointer-events: auto;
 }
+
 /* Einstellungen (Settings) */
 .settings-form {
   display: flex;
@@ -15,31 +16,72 @@
   padding: 14px 18px;
   margin-bottom: 18px;
   box-shadow: var(--shadow-soft);
+  flex-wrap: wrap;
 }
+
+.setting-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .settings-form label {
   color: var(--text-muted);
   font-size: 1rem;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Custom Number Control */
+.number-control {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.settings-form input[type="number"] {
   background: var(--bg-elevated-soft);
-  color: var(--text);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
-  padding: 6px 10px;
+  padding: 2px;
+}
+
+.btn-control {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 1.2rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.btn-control:hover {
+  background: rgba(63, 208, 255, 0.1);
+}
+
+.number-control input {
+  background: transparent;
+  border: none;
+  color: var(--text);
   font-size: 1rem;
-  width: 3.5em;
+  width: 2.5em;
   text-align: center;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  font-weight: 600;
+  -moz-appearance: textfield;
 }
-.settings-form input[type="number"]:focus {
+
+.number-control input::-webkit-outer-spin-button,
+.number-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-control input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
 }
+
 :root {
   --bg: #0b0c10;
   --bg-elevated: #151821;
@@ -153,9 +195,15 @@ body {
 
 /* Overview */
 
-#overviewView h2 {
-  margin-top: 0;
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
+}
+
+#overviewView h2 {
+  margin: 0;
   font-size: 1.3rem;
 }
 
@@ -276,6 +324,25 @@ body {
   margin-top: 4px;
 }
 
+/* Edit Button on Card */
+.btn-edit {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: color 0.2s, background 0.2s;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.btn-edit:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* Buttons */
 
 .btn {
@@ -320,6 +387,30 @@ body {
 
 .btn--ghost:hover {
   background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+}
+
+.btn--danger {
+  background: rgba(255, 75, 92, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(255, 75, 92, 0.2);
+}
+
+.btn--danger:hover {
+  background: rgba(255, 75, 92, 0.2);
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-icon:hover {
   color: var(--text);
 }
 
@@ -437,30 +528,210 @@ body {
   color: var(--text-muted);
 }
 
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.modal--hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  width: 90%;
+  max-width: 500px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+  padding: 24px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal--hidden .modal-content {
+  transform: translateY(20px);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="time"],
+.form-group textarea {
+  background: var(--bg-elevated-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.days-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.day-checkbox {
+  display: none;
+}
+
+.day-label {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--bg-elevated-soft);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.day-checkbox:checked+.day-label {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.hint-small {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.hint-small code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.preview-box {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  display: flex;
+  gap: 8px;
+}
+
+.preview-label {
+  color: var(--text-muted);
+}
+
+.preview-content {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.spacer {
+  flex: 1;
+}
+
 /* Responsive */
 
 @media (max-width: 768px) {
   #app {
     padding: 16px 10px 24px;
   }
+
   .app-header {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .active-container {
     padding: 18px 12px 14px;
   }
+
   .exercise-list {
     font-size: clamp(1.2rem, 4vw, 1.6rem);
   }
+
   .active-footer {
     flex-direction: column-reverse;
     align-items: stretch;
   }
+
   .timer-wrapper {
     justify-content: center;
   }
+
   .btn--primary {
     width: 100%;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
 }
