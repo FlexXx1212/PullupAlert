@@ -1,6 +1,6 @@
 # Pullup Alert – Klimmzug-Routine SPA
 
-Single Page App als Reminder und Übungsanzeige für tägliche Klimmzug-Einheiten.
+Single Page App als Reminder und Übungsanzeige für tägliche Klimmzug-Einheiten
 
 ## Features
 
