@@ -20,12 +20,12 @@ function saveSettings(settings) {
 }
 
 // Platzhalter in Übungstexten ersetzen, inkl. Mathe-Ausdrücke
-function resolveExerciseText(text, sets, repeats) {
-  // Ersetze [SETS], [REPEATS] und Mathe-Ausdrücke wie [REPEATS-1], [SETS*REPEATS*2] usw.
+function resolveExerciseText(text, sets, reps) {
+  // Ersetze [SETS], [REPS] und Mathe-Ausdrücke wie [REPS-1], [SETS*REPS*2] usw.
   return text.replace(/\[(.*?)\]/g, (match, expr) => {
     let safeExpr = expr
       .replace(/SETS/gi, sets)
-      .replace(/REPEATS/gi, repeats);
+      .replace(/REPS/gi, reps);
     try {
       // eslint-disable-next-line no-eval
       let result = eval(safeExpr);
@@ -239,12 +239,12 @@ async function loadWorkouts() {
   const localRaw = localStorage.getItem(WORKOUTS_KEY);
   let dataWorkouts = [];
   let dataSets = 2;
-  let dataRepeats = 3;
+  let dataReps = 3;
 
   if (localRaw) {
     const parsed = JSON.parse(localRaw);
     dataWorkouts = parsed.workouts || [];
-    // Sets/Repeats aus Settings laden, Fallback auf JSON-Werte nicht nötig, da Settings global sind
+    // Sets/Reps aus Settings laden
   } else {
     // 2. Fallback: JSON laden und in localStorage speichern (Migration)
     try {
@@ -253,14 +253,14 @@ async function loadWorkouts() {
         const jsonData = await response.json();
         dataWorkouts = jsonData.workouts || [];
         dataSets = jsonData.sets;
-        dataRepeats = jsonData.repeats;
+        dataReps = jsonData.reps;
 
         // Initial speichern
         saveWorkoutsToStorage(dataWorkouts);
         // Settings auch initial speichern, falls noch nicht vorhanden
         const currentSettings = loadSettings();
         if (!currentSettings.sets) {
-          saveSettings({ ...currentSettings, sets: dataSets, repeats: dataRepeats });
+          saveSettings({ ...currentSettings, sets: dataSets, reps: dataReps });
         }
       }
     } catch (err) {
@@ -271,7 +271,7 @@ async function loadWorkouts() {
   // Globale Settings aktualisieren
   const settings = loadSettings();
   window.sets = typeof settings.sets === "number" ? settings.sets : dataSets;
-  window.repeats = typeof settings.repeats === "number" ? settings.repeats : dataRepeats;
+  window.reps = typeof settings.reps === "number" ? settings.reps : dataReps;
 
   // Workouts verarbeiten
   const todayKey = getTodayKey();
@@ -374,10 +374,10 @@ function deleteWorkout(id) {
 function renderOverview() {
   // Inputs updaten
   const setsInput = $("#setsInput");
-  const repeatsInput = $("#repeatsInput");
-  if (setsInput && repeatsInput) {
+  const repsInput = $("#repsInput");
+  if (setsInput && repsInput) {
     setsInput.value = window.sets;
-    repeatsInput.value = window.repeats;
+    repsInput.value = window.reps;
   }
 
   const container = $("#workoutList");
@@ -478,7 +478,7 @@ function showActiveWorkout(workout) {
 
   (workout.exercises || []).forEach((text) => {
     const li = document.createElement("li");
-    li.textContent = resolveExerciseText(text, window.sets, window.repeats);
+    li.textContent = resolveExerciseText(text, window.sets, window.reps);
     list.appendChild(li);
   });
 
@@ -625,13 +625,14 @@ function closeModal() {
 
 function updateModalPreview() {
   const text = $("#wfExercises").value;
-  const firstLine = text.split("\n")[0] || "";
-  if (!firstLine.trim()) {
+  if (!text.trim()) {
     $("#wfPreview").textContent = "-";
     return;
   }
-  const resolved = resolveExerciseText(firstLine, window.sets, window.repeats);
-  $("#wfPreview").textContent = resolved;
+  // Alle Zeilen verarbeiten
+  const lines = text.split("\n");
+  const resolvedLines = lines.map(line => resolveExerciseText(line, window.sets, window.reps));
+  $("#wfPreview").textContent = resolvedLines.join("\n");
 }
 
 function handleModalSubmit(e) {
@@ -730,16 +731,16 @@ async function initApp() {
 
   // Settings-Form Events
   const setsInput = $("#setsInput");
-  const repeatsInput = $("#repeatsInput");
+  const repsInput = $("#repsInput");
 
   const updateSettings = () => {
     let s = parseInt(setsInput.value, 10);
-    let r = parseInt(repeatsInput.value, 10);
+    let r = parseInt(repsInput.value, 10);
     if (isNaN(s) || s < 1) s = 2;
     if (isNaN(r) || r < 1) r = 3;
     window.sets = s;
-    window.repeats = r;
-    saveSettings({ sets: s, repeats: r });
+    window.reps = r;
+    saveSettings({ sets: s, reps: r });
     renderOverview();
     // Update Preview if modal is open
     if (!$("#workoutModal").classList.contains("modal--hidden")) {
@@ -747,9 +748,9 @@ async function initApp() {
     }
   };
 
-  if (setsInput && repeatsInput) {
+  if (setsInput && repsInput) {
     setsInput.addEventListener("change", updateSettings);
-    repeatsInput.addEventListener("change", updateSettings);
+    repsInput.addEventListener("change", updateSettings);
   }
 
   setupReminderTicker();

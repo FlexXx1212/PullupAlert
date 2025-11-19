@@ -43,11 +43,11 @@
           </div>
         </div>
         <div class="setting-group">
-          <label for="repeatsInput">Max. Wiederholungen:</label>
+          <label for="repsInput">Max. Reps:</label>
           <div class="number-control">
-            <button type="button" class="btn-control" data-action="dec" data-target="repeatsInput">-</button>
-            <input type="number" id="repeatsInput" min="1" max="99" readonly />
-            <button type="button" class="btn-control" data-action="inc" data-target="repeatsInput">+</button>
+            <button type="button" class="btn-control" data-action="dec" data-target="repsInput">-</button>
+            <input type="number" id="repsInput" min="1" max="99" readonly />
+            <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
           </div>
         </div>
       </form>
@@ -132,14 +132,14 @@
 
             <div class="form-group">
               <label for="wfExercises">Übungen (eine pro Zeile)</label>
-              <textarea id="wfExercises" rows="4" placeholder="Klimmzüge: [SETS] Sets - [REPEATS] Reps"></textarea>
+              <textarea id="wfExercises" rows="4" placeholder="Klimmzüge: [SETS] Sets - [REPS] Reps"></textarea>
               <p class="hint-small">
-                Platzhalter: <code>[SETS]</code>, <code>[REPEATS]</code>. Mathe erlaubt: <code>[SETS*2]</code>, <code>[REPEATS+5]</code>.
+                Platzhalter: <code>[SETS]</code>, <code>[REPS]</code>. Mathe erlaubt: <code>[SETS*2]</code>, <code>[REPS+5]</code>.
               </p>
             </div>
 
             <div class="preview-box">
-              <span class="preview-label">Vorschau (Erste Zeile):</span>
+              <span class="preview-label">Vorschau:</span>
               <span id="wfPreview" class="preview-content">-</span>
             </div>
 

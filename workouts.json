@@ -1,6 +1,6 @@
 {
   "sets": 2,
-  "repeats": 2,
+  "reps": 2,
   "workouts": [
     {
       "id": "morning",
@@ -10,8 +10,8 @@
       "grip": "Schulterbreiter Untergriff",
       "days": ["Mo", "Mi", "Fr"],
       "exercises": [
-        "Klimmzüge: [SETS] Sets - [REPEATS] Reps",
-        "Hanging Knee Raises: [SETS*REPEATS*1.5] Reps"
+        "Klimmzüge: [SETS] Sets - [REPS] Reps",
+        "Hanging Knee Raises: [SETS*REPS*1.5] Reps"
       ]
     },
     {
@@ -33,8 +33,8 @@
       "grip": "Weiter Obergriff",
       "days": ["Mo", "Mi", "Fr"],
       "exercises": [
-        "Klimmzüge: [SETS] Sets - [REPEATS-1] Reps",
-        "Scapular Pull-ups: [SETS*REPEATS*1.3] Reps"
+        "Klimmzüge: [SETS] Sets - [REPS-1] Reps",
+        "Scapular Pull-ups: [SETS*REPS*1.3] Reps"
       ]
     },
     {
@@ -45,8 +45,8 @@
       "grip": "Neutralgriff",
       "days": ["Mo", "Mi", "Fr"],
       "exercises": [
-        "Klimmzüge: [SETS] Sets - [REPEATS] Reps",
-        "Bauch: [SETS*REPEATS*1.3] Beinhebungen"
+        "Klimmzüge: [SETS] Sets - [REPS] Reps",
+        "Bauch: [SETS*REPS*1.3] Beinhebungen"
       ]
     },
     {
@@ -57,7 +57,7 @@
       "grip": "-",
       "days": ["Mo", "Mi"],
       "exercises": [
-        "Side-Lying Lateral Raises: [SETS] Sets - [REPEATS*5*1.5] Reps"
+        "Side-Lying Lateral Raises: [SETS] Sets - [REPS*5*1.5] Reps"
       ]
     }
   ]

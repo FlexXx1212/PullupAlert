@@ -256,6 +256,8 @@ body {
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
+  padding-right: 24px;
+  /* Space for edit button */
 }
 
 .workout-time {
@@ -334,8 +336,9 @@ body {
   border-radius: 50%;
   transition: color 0.2s, background 0.2s;
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
 }
 
 .btn-edit:hover {
@@ -675,6 +678,7 @@ body {
   margin-bottom: 20px;
   font-size: 0.9rem;
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -685,6 +689,7 @@ body {
 .preview-content {
   color: var(--accent);
   font-weight: 500;
+  white-space: pre-wrap;
 }
 
 .modal-actions {
