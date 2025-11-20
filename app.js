@@ -765,6 +765,196 @@ async function initApp() {
   updateCurrentTimeDisplay();
   document.title = BASE_TITLE;
   requestNotificationPermission();
+
+  // Stand Up Alert Logic starten
+  initStandUpLogic();
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
+
+/* ---------------------------------------------------------
+   STAND UP ALERT LOGIC
+   --------------------------------------------------------- */
+
+const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
+const STANDUP_STATE_KEY = "pullup-alert-standup-state";
+
+let standUpSettings = {
+  enabled: false,
+  minTime: 45,
+  maxTime: 75,
+  minDur: 10,
+  maxDur: 20
+};
+
+let standUpState = {
+  phase: "IDLE", // IDLE, SITTING, STANDING
+  targetTime: null // Timestamp (ms)
+};
+
+function loadStandUpSettings() {
+  try {
+    const raw = localStorage.getItem(STANDUP_SETTINGS_KEY);
+    if (raw) {
+      standUpSettings = { ...standUpSettings, ...JSON.parse(raw) };
+    }
+  } catch (e) { console.warn(e); }
+}
+
+function saveStandUpSettings() {
+  localStorage.setItem(STANDUP_SETTINGS_KEY, JSON.stringify(standUpSettings));
+}
+
+function loadStandUpState() {
+  try {
+    const raw = localStorage.getItem(STANDUP_STATE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      standUpState = parsed;
+      // Wenn targetTime existiert, muss es evtl. geprüft werden
+    }
+  } catch (e) { console.warn(e); }
+}
+
+function saveStandUpState() {
+  localStorage.setItem(STANDUP_STATE_KEY, JSON.stringify(standUpState));
+}
+
+function getRandomMinutes(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function initStandUpLogic() {
+  loadStandUpSettings();
+  loadStandUpState();
+
+  // UI initialisieren
+  const toggle = $("#standUpToggle");
+  const minTimeIn = $("#suMinTime");
+  const maxTimeIn = $("#suMaxTime");
+  const minDurIn = $("#suMinDur");
+  const maxDurIn = $("#suMaxDur");
+
+  if (toggle) {
+    toggle.checked = standUpSettings.enabled;
+    toggle.addEventListener("change", (e) => {
+      standUpSettings.enabled = e.target.checked;
+      saveStandUpSettings();
+      handleStandUpToggle();
+    });
+  }
+
+  // Inputs
+  const updateInputs = () => {
+    standUpSettings.minTime = parseInt(minTimeIn.value) || 45;
+    standUpSettings.maxTime = parseInt(maxTimeIn.value) || 75;
+    standUpSettings.minDur = parseInt(minDurIn.value) || 10;
+    standUpSettings.maxDur = parseInt(maxDurIn.value) || 20;
+    saveStandUpSettings();
+  };
+
+  [minTimeIn, maxTimeIn, minDurIn, maxDurIn].forEach(el => {
+    if (el) {
+      // Set initial values
+      if (el.id === "suMinTime") el.value = standUpSettings.minTime;
+      if (el.id === "suMaxTime") el.value = standUpSettings.maxTime;
+      if (el.id === "suMinDur") el.value = standUpSettings.minDur;
+      if (el.id === "suMaxDur") el.value = standUpSettings.maxDur;
+
+      el.addEventListener("change", updateInputs);
+    }
+  });
+
+  // Wenn beim Laden enabled ist, aber IDLE -> Starten
+  if (standUpSettings.enabled && standUpState.phase === "IDLE") {
+    startSittingPhase();
+  }
+
+  // Ticker starten
+  setInterval(updateStandUpTicker, 1000);
+  updateStandUpTicker();
+}
+
+function handleStandUpToggle() {
+  if (standUpSettings.enabled) {
+    if (standUpState.phase === "IDLE") {
+      startSittingPhase();
+    }
+  } else {
+    standUpState.phase = "IDLE";
+    standUpState.targetTime = null;
+    saveStandUpState();
+    updateStandUpTicker();
+  }
+}
+
+function startSittingPhase() {
+  const minutes = getRandomMinutes(standUpSettings.minTime, standUpSettings.maxTime);
+  standUpState.phase = "SITTING";
+  standUpState.targetTime = Date.now() + minutes * 60 * 1000;
+  saveStandUpState();
+  updateStandUpTicker();
+}
+
+function startStandingPhase() {
+  const minutes = getRandomMinutes(standUpSettings.minDur, standUpSettings.maxDur);
+  standUpState.phase = "STANDING";
+  standUpState.targetTime = Date.now() + minutes * 60 * 1000;
+  saveStandUpState();
+  updateStandUpTicker();
+
+  notifyStandUp("Aufstehen!", `Zeit für ${minutes} Minuten im Stehen arbeiten.`);
+}
+
+function updateStandUpTicker() {
+  const timerEl = $("#standUpTimer");
+  if (!timerEl) return;
+
+  if (!standUpSettings.enabled || standUpState.phase === "IDLE") {
+    timerEl.style.display = "none";
+    return;
+  }
+
+  timerEl.style.display = "inline-block";
+  const now = Date.now();
+  let diff = standUpState.targetTime - now;
+
+  if (diff <= 0) {
+    // Zeit abgelaufen -> Phase wechseln
+    if (standUpState.phase === "SITTING") {
+      startStandingPhase();
+    } else if (standUpState.phase === "STANDING") {
+      // Zurück zu Sitting
+      notifyStandUp("Hinsetzen!", "Du kannst dich wieder setzen.");
+      startSittingPhase();
+    }
+    return;
+  }
+
+  // Formatieren
+  const totalSeconds = Math.floor(diff / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  const timeStr = `${m}:${s.toString().padStart(2, "0")}`;
+
+  if (standUpState.phase === "SITTING") {
+    timerEl.textContent = `Sitzen: ${timeStr}`;
+    timerEl.className = "standup-timer active";
+  } else {
+    timerEl.textContent = `Stehen: ${timeStr}`;
+    timerEl.className = "standup-timer standing";
+  }
+}
+
+function notifyStandUp(title, body) {
+  playAlertSound();
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    const notification = new Notification(title, { body });
+    notification.onclick = (event) => {
+      event.preventDefault();
+      try {
+      window.focus();
+      } catch (_) { }
+    };
+  }
+}

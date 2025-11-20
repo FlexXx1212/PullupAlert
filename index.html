@@ -17,6 +17,7 @@
         <p class="app-subtitle">Deine tägliche Klimmzug-Routine</p>
       </div>
       <div class="header-right">
+        <span id="standUpTimer" class="standup-timer" style="display: none;"></span>
         <span id="currentTime" class="current-time" aria-label="Aktuelle Uhrzeit"></span>
       </div>
     </header>
@@ -54,6 +55,35 @@
 
       <div id="workoutList" class="workout-list">
         <!-- Karten werden per JS eingefügt -->
+      </div>
+
+      <!-- Stand Up Alert Settings -->
+      <div class="standup-settings">
+        <div class="standup-header">
+          <h3>Stand Up Alert</h3>
+          <label class="switch">
+            <input type="checkbox" id="standUpToggle">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="standup-controls">
+          <div class="setting-group">
+            <label>Intervall (Min-Max):</label>
+            <div class="range-inputs">
+              <input type="number" id="suMinTime" value="45" min="1">
+              <span>-</span>
+              <input type="number" id="suMaxTime" value="75" min="1">
+            </div>
+          </div>
+          <div class="setting-group">
+            <label>Steh-Dauer (Min-Max):</label>
+            <div class="range-inputs">
+              <input type="number" id="suMinDur" value="10" min="1">
+              <span>-</span>
+              <input type="number" id="suMaxDur" value="20" min="1">
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
