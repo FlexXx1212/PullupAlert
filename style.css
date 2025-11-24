@@ -182,7 +182,7 @@ body {
   box-shadow: var(--shadow-soft);
   display: none;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .view--active {
