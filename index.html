@@ -71,6 +71,14 @@
             <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
           </div>
         </div>
+        <div class="setting-group">
+          <label for="timerDurationInput">Timer (Sek.):</label>
+          <div class="number-control">
+            <button type="button" class="btn-control" data-action="dec" data-target="timerDurationInput">-</button>
+            <input type="number" id="timerDurationInput" value="75" min="1" max="999" readonly />
+            <button type="button" class="btn-control" data-action="inc" data-target="timerDurationInput">+</button>
+          </div>
+        </div>
       </form>
 
       <div id="workoutList" class="workout-list">
@@ -128,7 +136,7 @@
         </div>
 
         <div class="active-footer">
-          <div class="timer-section" aria-label="75s Timer">
+          <div class="timer-section" aria-label="Pausen-Timer">
             <div class="timer-wrapper">
               <span id="countdown" class="timer-number">75</span>
               <button id="timerControl" class="timer-control" type="button" aria-label="Timer starten" title="Timer starten">
