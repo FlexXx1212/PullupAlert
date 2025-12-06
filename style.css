@@ -531,44 +531,53 @@ body {
 }
 
 .timer-wrapper {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 10px 18px;
-  border-radius: var(--radius-pill);
-  background: rgba(2, 6, 14, 0.9);
-  border: 1px solid var(--accent-soft);
   position: relative;
-  min-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 22px;
+  min-width: 180px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(12, 18, 30, 0.95), rgba(7, 12, 20, 0.95));
+  border: 1px solid var(--accent-soft);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 /* Double the size of the timer number */
 .timer-number {
+  position: relative;
+  z-index: 1;
   font-size: clamp(4rem, 6vw, 5.2rem);
   font-variant-numeric: tabular-nums;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.timer-wrapper:hover .timer-number {
+  filter: blur(3px);
+  opacity: 0.75;
 }
 
 .timer-control {
   position: absolute;
-  top: 10px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid var(--accent-soft);
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(circle, rgba(15, 23, 36, 0.85) 0%, rgba(8, 12, 20, 0.6) 60%, transparent 80%);
   color: var(--text);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  border: none;
+  outline: none;
   opacity: 0;
   visibility: hidden;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
 .timer-control i {
-  font-size: 1rem;
+  font-size: clamp(4rem, 6vw, 5.2rem);
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .timer-wrapper:hover .timer-control,
