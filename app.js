@@ -42,7 +42,7 @@ function resolveExerciseText(text, sets, reps) {
 
 const BASE_TITLE = "Pullup Alert";
 const REMINDER_INTERVAL_MINUTES = 30;
-const TIMER_DURATION_SECONDS = 75;
+const DEFAULT_TIMER_DURATION_SECONDS = 75;
 const STORAGE_KEY = "pullup-alert-completions";
 
 // Wochentag-Mapping (Deutsch → Date.getDay Index)
@@ -64,7 +64,8 @@ let currentWorkout = null;
 let countdownIntervalId = null;
 let blinkIntervalId = null;
 let isBlinking = false;
-let timerRemaining = TIMER_DURATION_SECONDS;
+let timerDurationSeconds = DEFAULT_TIMER_DURATION_SECONDS;
+let timerRemaining = timerDurationSeconds;
 let isCountdownRunning = false;
 
 // ---- Notification API ----
@@ -228,7 +229,7 @@ function updateCountdownDisplay() {
 
 function resetCountdown() {
   stopCountdown();
-  timerRemaining = TIMER_DURATION_SECONDS;
+  timerRemaining = timerDurationSeconds;
   updateCountdownDisplay();
   updateTimerControlState(false);
 }
@@ -240,7 +241,7 @@ function sendTimerNotification() {
   const title = "Pause vorbei";
   const body = currentWorkout
     ? `${currentWorkout.title}: Weiter geht's!`
-    : "Der 75s Timer ist abgelaufen.";
+    : `Der ${timerDurationSeconds}s Timer ist abgelaufen.`;
 
   try {
     new Notification(title, { body, tag: "pullup-alert-rest-timer" });
@@ -259,7 +260,7 @@ function startCountdown() {
   if (isCountdownRunning) return;
 
   stopCountdown();
-  timerRemaining = TIMER_DURATION_SECONDS;
+  timerRemaining = timerDurationSeconds;
   updateCountdownDisplay();
 
   isCountdownRunning = true;
@@ -331,7 +332,12 @@ async function loadWorkouts() {
         // Settings auch initial speichern, falls noch nicht vorhanden
         const currentSettings = loadSettings();
         if (!currentSettings.sets) {
-          saveSettings({ ...currentSettings, sets: dataSets, reps: dataReps });
+          saveSettings({
+            ...currentSettings,
+            sets: dataSets,
+            reps: dataReps,
+            timerDurationSeconds: DEFAULT_TIMER_DURATION_SECONDS
+          });
         }
       }
     } catch (err) {
@@ -343,6 +349,15 @@ async function loadWorkouts() {
   const settings = loadSettings();
   window.sets = typeof settings.sets === "number" ? settings.sets : dataSets;
   window.reps = typeof settings.reps === "number" ? settings.reps : dataReps;
+  timerDurationSeconds = typeof settings.timerDurationSeconds === "number"
+    ? settings.timerDurationSeconds
+    : DEFAULT_TIMER_DURATION_SECONDS;
+  window.timerDurationSeconds = timerDurationSeconds;
+  timerRemaining = timerDurationSeconds;
+
+  if (typeof settings.timerDurationSeconds !== "number") {
+    saveSettings({ ...settings, sets: window.sets, reps: window.reps, timerDurationSeconds });
+  }
 
   // Workouts verarbeiten
   const todayKey = getTodayKey();
@@ -448,9 +463,13 @@ function renderOverview() {
   // Inputs updaten
   const setsInput = $("#setsInput");
   const repsInput = $("#repsInput");
+  const timerInput = $("#timerDurationInput");
   if (setsInput && repsInput) {
     setsInput.value = window.sets;
     repsInput.value = window.reps;
+    if (timerInput) {
+      timerInput.value = timerDurationSeconds;
+    }
   }
 
   const container = $("#workoutList");
@@ -802,8 +821,10 @@ function setupCustomInputs() {
       let val = parseInt(input.value, 10) || 0;
       if (action === "inc") val++;
       if (action === "dec") val--;
-      if (val < 1) val = 1;
-      if (val > 99) val = 99;
+      const min = parseInt(input.getAttribute("min"), 10) || 1;
+      const max = parseInt(input.getAttribute("max"), 10) || 99;
+      if (val < min) val = min;
+      if (val > max) val = max;
 
       input.value = val;
       // Trigger change event manually
@@ -868,29 +889,38 @@ async function initApp() {
   setupEventListeners();
   setupCustomInputs();
   updateTimerControlState(false);
+  updateCountdownDisplay();
 
   // Settings-Form Events
   const setsInput = $("#setsInput");
   const repsInput = $("#repsInput");
+  const timerInput = $("#timerDurationInput");
 
   const updateSettings = () => {
     let s = parseInt(setsInput.value, 10);
     let r = parseInt(repsInput.value, 10);
+    let t = parseInt(timerInput.value, 10);
     if (isNaN(s) || s < 1) s = 2;
     if (isNaN(r) || r < 1) r = 3;
+    if (isNaN(t) || t < 1) t = DEFAULT_TIMER_DURATION_SECONDS;
+    if (t > 999) t = 999;
     window.sets = s;
     window.reps = r;
-    saveSettings({ sets: s, reps: r });
+    timerDurationSeconds = t;
+    window.timerDurationSeconds = t;
+    saveSettings({ sets: s, reps: r, timerDurationSeconds: t });
     renderOverview();
+    resetCountdown();
     // Update Preview if modal is open
     if (!$("#workoutModal").classList.contains("modal--hidden")) {
       updateModalPreview();
     }
   };
 
-  if (setsInput && repsInput) {
+  if (setsInput && repsInput && timerInput) {
     setsInput.addEventListener("change", updateSettings);
     repsInput.addEventListener("change", updateSettings);
+    timerInput.addEventListener("change", updateSettings);
   }
 
   setupReminderTicker();
