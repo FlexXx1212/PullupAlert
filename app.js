@@ -289,6 +289,14 @@ function updateTimerControlState(running) {
   }
 }
 
+function toggleCountdown() {
+  if (isCountdownRunning) {
+    resetCountdown();
+  } else {
+    startCountdown();
+  }
+}
+
 // ---- WORKOUT MANAGEMENT ----
 
 // Workouts laden (localStorage > JSON)
@@ -781,14 +789,15 @@ function setupEventListeners() {
 
   const timerControl = $("#timerControl");
   if (timerControl) {
-    timerControl.addEventListener("click", () => {
-      if (isCountdownRunning) {
-        resetCountdown();
-      } else {
-        startCountdown();
-      }
-    });
+    timerControl.addEventListener("click", toggleCountdown);
   }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.code === "Space") {
+      event.preventDefault();
+      toggleCountdown();
+    }
+  });
 
   // Modal Events
   $("#addWorkoutBtn").addEventListener("click", () => openModal());
