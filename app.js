@@ -64,6 +64,8 @@ let currentWorkout = null;
 let countdownIntervalId = null;
 let blinkIntervalId = null;
 let isBlinking = false;
+let timerRemaining = TIMER_DURATION_SECONDS;
+let isCountdownRunning = false;
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -215,20 +217,89 @@ function stopCountdown() {
     clearInterval(countdownIntervalId);
     countdownIntervalId = null;
   }
+  isCountdownRunning = false;
+}
+
+function updateCountdownDisplay() {
+  const display = $("#countdown");
+  if (!display) return;
+  display.textContent = timerRemaining.toString();
+}
+
+function resetCountdown() {
+  stopCountdown();
+  timerRemaining = TIMER_DURATION_SECONDS;
+  updateCountdownDisplay();
+  updateTimerControlState(false);
+}
+
+function sendTimerNotification() {
+  if (typeof Notification === "undefined") return;
+  if (Notification.permission !== "granted") return;
+
+  const title = "Pause vorbei";
+  const body = currentWorkout
+    ? `${currentWorkout.title}: Weiter geht's!`
+    : "Der 75s Timer ist abgelaufen.";
+
+  try {
+    new Notification(title, { body, tag: "pullup-alert-rest-timer" });
+  } catch (err) {
+    console.warn("Konnte Timer-Notification nicht erstellen", err);
+  }
+}
+
+function handleCountdownFinished() {
+  playAlertSound();
+  sendTimerNotification();
+  resetCountdown();
 }
 
 function startCountdown() {
+  if (isCountdownRunning) return;
+
   stopCountdown();
-  const display = $("#countdown");
-  let remaining = TIMER_DURATION_SECONDS;
-  display.textContent = remaining.toString();
+  timerRemaining = TIMER_DURATION_SECONDS;
+  updateCountdownDisplay();
+
+  isCountdownRunning = true;
+  updateTimerControlState(true);
   countdownIntervalId = setInterval(() => {
-    remaining -= 1;
-    if (remaining <= 0) {
-      remaining = TIMER_DURATION_SECONDS;
+    timerRemaining -= 1;
+    if (timerRemaining <= 0) {
+      handleCountdownFinished();
+      return;
     }
-    display.textContent = remaining.toString();
+    updateCountdownDisplay();
   }, 1000);
+}
+
+function updateTimerControlState(running) {
+  const control = $("#timerControl");
+  const timerWrapper = document.querySelector(".timer-wrapper");
+  const timerNumber = $("#countdown");
+  if (!control) return;
+
+  const icon = control.querySelector("i");
+  const isRunning = Boolean(running);
+
+  control.setAttribute("aria-label", isRunning ? "Timer stoppen" : "Timer starten");
+  control.setAttribute("title", isRunning ? "Timer stoppen" : "Timer starten");
+
+  if (icon) {
+    icon.className = `fas ${isRunning ? "fa-stop" : "fa-play"}`;
+  }
+
+  timerWrapper?.classList.toggle("timer-wrapper--active", isRunning);
+  timerNumber?.classList.toggle("timer-number--active", isRunning);
+}
+
+function toggleCountdown() {
+  if (isCountdownRunning) {
+    resetCountdown();
+  } else {
+    startCountdown();
+  }
 }
 
 // ---- WORKOUT MANAGEMENT ----
@@ -501,7 +572,7 @@ function showActiveWorkout(workout) {
   } else {
     if (footer) footer.style.display = '';
     if (container) container.classList.remove('preview-mode');
-    startCountdown();
+    resetCountdown();
   }
   showView("activeView");
 }
@@ -758,7 +829,7 @@ function setupEventListeners() {
   });
 
   $("#backToOverview").addEventListener("click", () => {
-    stopCountdown();
+    resetCountdown();
     showView("overviewView");
     stopTitleBlink();
     document.title = BASE_TITLE;
@@ -766,6 +837,18 @@ function setupEventListeners() {
 
   $("#completeButton").addEventListener("click", () => {
     markCurrentWorkoutCompleted();
+  });
+
+  const timerControl = $("#timerControl");
+  if (timerControl) {
+    timerControl.addEventListener("click", toggleCountdown);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.code === "Space") {
+      event.preventDefault();
+      toggleCountdown();
+    }
   });
 
   // Modal Events
@@ -784,6 +867,7 @@ async function initApp() {
   renderOverview();
   setupEventListeners();
   setupCustomInputs();
+  updateTimerControlState(false);
 
   // Settings-Form Events
   const setsInput = $("#setsInput");
