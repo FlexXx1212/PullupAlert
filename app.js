@@ -64,6 +64,8 @@ let currentWorkout = null;
 let countdownIntervalId = null;
 let blinkIntervalId = null;
 let isBlinking = false;
+let timerRemaining = TIMER_DURATION_SECONDS;
+let isCountdownRunning = false;
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -215,19 +217,70 @@ function stopCountdown() {
     clearInterval(countdownIntervalId);
     countdownIntervalId = null;
   }
+  isCountdownRunning = false;
+}
+
+function updateCountdownDisplay() {
+  const display = $("#countdown");
+  if (!display) return;
+  display.textContent = timerRemaining.toString();
+}
+
+function resetCountdown() {
+  stopCountdown();
+  timerRemaining = TIMER_DURATION_SECONDS;
+  updateCountdownDisplay();
+
+  const startBtn = $("#startTimerButton");
+  if (startBtn) {
+    startBtn.disabled = false;
+    startBtn.textContent = "Starte Timer";
+  }
+}
+
+function sendTimerNotification() {
+  if (typeof Notification === "undefined") return;
+  if (Notification.permission !== "granted") return;
+
+  const title = "Pause vorbei";
+  const body = currentWorkout
+    ? `${currentWorkout.title}: Weiter geht's!`
+    : "Der 75s Timer ist abgelaufen.";
+
+  try {
+    new Notification(title, { body, tag: "pullup-alert-rest-timer" });
+  } catch (err) {
+    console.warn("Konnte Timer-Notification nicht erstellen", err);
+  }
+}
+
+function handleCountdownFinished() {
+  playAlertSound();
+  sendTimerNotification();
+  resetCountdown();
 }
 
 function startCountdown() {
+  if (isCountdownRunning) return;
+
   stopCountdown();
-  const display = $("#countdown");
-  let remaining = TIMER_DURATION_SECONDS;
-  display.textContent = remaining.toString();
+  timerRemaining = TIMER_DURATION_SECONDS;
+  updateCountdownDisplay();
+
+  const startBtn = $("#startTimerButton");
+  if (startBtn) {
+    startBtn.disabled = true;
+    startBtn.textContent = "Timer läuft...";
+  }
+
+  isCountdownRunning = true;
   countdownIntervalId = setInterval(() => {
-    remaining -= 1;
-    if (remaining <= 0) {
-      remaining = TIMER_DURATION_SECONDS;
+    timerRemaining -= 1;
+    if (timerRemaining <= 0) {
+      handleCountdownFinished();
+      return;
     }
-    display.textContent = remaining.toString();
+    updateCountdownDisplay();
   }, 1000);
 }
 
@@ -499,7 +552,7 @@ function showActiveWorkout(workout) {
   } else {
     if (footer) footer.style.display = '';
     if (container) container.classList.remove('preview-mode');
-    startCountdown();
+    resetCountdown();
   }
   showView("activeView");
 }
@@ -711,7 +764,7 @@ function setupEventListeners() {
   });
 
   $("#backToOverview").addEventListener("click", () => {
-    stopCountdown();
+    resetCountdown();
     showView("overviewView");
     stopTitleBlink();
     document.title = BASE_TITLE;
@@ -720,6 +773,13 @@ function setupEventListeners() {
   $("#completeButton").addEventListener("click", () => {
     markCurrentWorkoutCompleted();
   });
+
+  const startTimerBtn = $("#startTimerButton");
+  if (startTimerBtn) {
+    startTimerBtn.addEventListener("click", () => {
+      startCountdown();
+    });
+  }
 
   // Modal Events
   $("#addWorkoutBtn").addEventListener("click", () => openModal());
