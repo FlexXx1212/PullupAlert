@@ -155,6 +155,18 @@ body {
   letter-spacing: 0.05em;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.standup-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .app-subtitle {
   margin: 4px 0 0;
   font-size: 0.9rem;
@@ -757,6 +769,32 @@ body {
 
 .standup-timer.standing {
   color: var(--success);
+}
+
+.standup-reset {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated-soft);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.standup-reset:hover {
+  border-color: var(--accent-soft);
+  background: rgba(62, 140, 255, 0.08);
+  color: var(--text);
+}
+
+.standup-reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .standup-settings {

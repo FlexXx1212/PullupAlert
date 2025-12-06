@@ -17,7 +17,19 @@
         <p class="app-subtitle">Deine tägliche Klimmzug-Routine</p>
       </div>
       <div class="header-right">
-        <span id="standUpTimer" class="standup-timer" style="display: none;"></span>
+        <div class="standup-inline">
+          <span id="standUpTimer" class="standup-timer" style="display: none;"></span>
+          <button
+            id="standUpReset"
+            class="standup-reset"
+            type="button"
+            aria-label="Stand Up Timer zurücksetzen"
+            title="Stand Up Timer zurücksetzen"
+            style="display: none;"
+          >
+            ⟳
+          </button>
+        </div>
         <span id="currentTime" class="current-time" aria-label="Aktuelle Uhrzeit"></span>
       </div>
     </header>
