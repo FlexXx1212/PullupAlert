@@ -230,12 +230,7 @@ function resetCountdown() {
   stopCountdown();
   timerRemaining = TIMER_DURATION_SECONDS;
   updateCountdownDisplay();
-
-  const startBtn = $("#startTimerButton");
-  if (startBtn) {
-    startBtn.disabled = false;
-    startBtn.textContent = "Starte Timer";
-  }
+  updateTimerControlState(false);
 }
 
 function sendTimerNotification() {
@@ -267,13 +262,8 @@ function startCountdown() {
   timerRemaining = TIMER_DURATION_SECONDS;
   updateCountdownDisplay();
 
-  const startBtn = $("#startTimerButton");
-  if (startBtn) {
-    startBtn.disabled = true;
-    startBtn.textContent = "Timer läuft...";
-  }
-
   isCountdownRunning = true;
+  updateTimerControlState(true);
   countdownIntervalId = setInterval(() => {
     timerRemaining -= 1;
     if (timerRemaining <= 0) {
@@ -282,6 +272,21 @@ function startCountdown() {
     }
     updateCountdownDisplay();
   }, 1000);
+}
+
+function updateTimerControlState(running) {
+  const control = $("#timerControl");
+  if (!control) return;
+
+  const icon = control.querySelector("i");
+  const isRunning = Boolean(running);
+
+  control.setAttribute("aria-label", isRunning ? "Timer stoppen" : "Timer starten");
+  control.setAttribute("title", isRunning ? "Timer stoppen" : "Timer starten");
+
+  if (icon) {
+    icon.className = `fas ${isRunning ? "fa-stop" : "fa-play"}`;
+  }
 }
 
 // ---- WORKOUT MANAGEMENT ----
@@ -774,10 +779,14 @@ function setupEventListeners() {
     markCurrentWorkoutCompleted();
   });
 
-  const startTimerBtn = $("#startTimerButton");
-  if (startTimerBtn) {
-    startTimerBtn.addEventListener("click", () => {
-      startCountdown();
+  const timerControl = $("#timerControl");
+  if (timerControl) {
+    timerControl.addEventListener("click", () => {
+      if (isCountdownRunning) {
+        resetCountdown();
+      } else {
+        startCountdown();
+      }
     });
   }
 
@@ -796,6 +805,7 @@ async function initApp() {
   renderOverview();
   setupEventListeners();
   setupCustomInputs();
+  updateTimerControlState(false);
 
   // Settings-Form Events
   const setsInput = $("#setsInput");

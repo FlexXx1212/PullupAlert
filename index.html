@@ -127,14 +127,13 @@
         </div>
 
         <div class="active-footer">
-          <div class="timer-section" aria-label="75 Sekunden Timer">
+          <div class="timer-section" aria-label="75s Timer">
             <div class="timer-wrapper">
               <span id="countdown" class="timer-number">75</span>
-              <span class="timer-unit">Sekunden</span>
+              <button id="timerControl" class="timer-control" type="button" aria-label="Timer starten" title="Timer starten">
+                <i class="fas fa-play" aria-hidden="true"></i>
+              </button>
             </div>
-            <button id="startTimerButton" class="btn btn--secondary timer-start-btn">
-              Starte Timer
-            </button>
           </div>
           <button id="completeButton" class="btn btn--primary">
             Workout abschließen
