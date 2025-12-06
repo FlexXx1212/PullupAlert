@@ -71,6 +71,14 @@
             <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
           </div>
         </div>
+        <div class="setting-group">
+          <label for="timerInput">Timer (Sek.):</label>
+          <div class="number-control">
+            <button type="button" class="btn-control" data-action="dec" data-target="timerInput">-</button>
+            <input type="number" id="timerInput" min="5" max="600" readonly />
+            <button type="button" class="btn-control" data-action="inc" data-target="timerInput">+</button>
+          </div>
+        </div>
       </form>
 
       <div id="workoutList" class="workout-list">
