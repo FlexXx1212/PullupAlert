@@ -562,11 +562,37 @@ function triggerWorkoutAlert(workout, isReminder) {
 
 // ---- MODAL LOGIC ----
 
+function setToggleCompletionButtonState(state) {
+  const toggleBtn = $("#toggleCompletionBtn");
+  if (!toggleBtn) return;
+
+  toggleBtn.dataset.state = state;
+  if (state === "completed") {
+    toggleBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+    toggleBtn.classList.add("btn--primary");
+    toggleBtn.classList.remove("btn--ghost");
+    toggleBtn.title = "Aktuell erledigt (klicken für 'noch nicht erledigt')";
+  } else {
+    toggleBtn.innerHTML = '<i class="fa-solid fa-x"></i>';
+    toggleBtn.classList.remove("btn--primary");
+    toggleBtn.classList.add("btn--ghost");
+    toggleBtn.title = "Aktuell nicht erledigt (klicken für 'erledigt')";
+  }
+}
+
+function toggleCompletionButtonState() {
+  const toggleBtn = $("#toggleCompletionBtn");
+  if (!toggleBtn || toggleBtn.style.display === "none") return;
+  const nextState = toggleBtn.dataset.state === "completed" ? "pending" : "completed";
+  setToggleCompletionButtonState(nextState);
+}
+
 function openModal(workout = null) {
   const modal = $("#workoutModal");
   const form = $("#workoutForm");
   const deleteBtn = $("#deleteWorkoutBtn");
   const title = $("#modalTitle");
+  const toggleBtn = $("#toggleCompletionBtn");
 
   // Reset Form
   form.reset();
@@ -612,10 +638,20 @@ function openModal(workout = null) {
       deleteWorkout(workout.id);
       closeModal();
     };
+
+    if (workout.completed) {
+      toggleBtn.style.display = "inline-flex";
+      setToggleCompletionButtonState("completed");
+    } else {
+      toggleBtn.style.display = "none";
+      setToggleCompletionButtonState("completed");
+    }
   } else {
     // Create Mode
     title.textContent = "Neues Workout";
     deleteBtn.style.display = "none";
+    toggleBtn.style.display = "none";
+    setToggleCompletionButtonState("completed");
     // Default: Alle Tage ausgewählt
     daysContainer.querySelectorAll("input").forEach(cb => cb.checked = true);
   }
@@ -655,6 +691,10 @@ function handleModalSubmit(e) {
   const selectedDays = Array.from(document.querySelectorAll("#wfDaysContainer input:checked"))
     .map(cb => cb.value);
 
+  const toggleBtn = $("#toggleCompletionBtn");
+  const hasToggle = toggleBtn && toggleBtn.style.display !== "none";
+  const completionState = hasToggle ? toggleBtn.dataset.state === "completed" : null;
+
   const data = {
     title,
     label,
@@ -665,7 +705,17 @@ function handleModalSubmit(e) {
   };
 
   if (id) {
+    if (completionState !== null) {
+      data.completed = completionState;
+    }
     updateWorkout(id, data);
+    if (completionState !== null) {
+      setWorkoutCompleted(id, completionState);
+      const updatedWorkout = workouts.find((w) => w.id === id);
+      if (updatedWorkout) {
+        updatedWorkout.completed = completionState;
+      }
+    }
   } else {
     addWorkout(data);
   }
@@ -728,6 +778,7 @@ function setupEventListeners() {
   $("#modalBackdrop").addEventListener("click", closeModal);
   $("#workoutForm").addEventListener("submit", handleModalSubmit);
   $("#wfExercises").addEventListener("input", updateModalPreview);
+  $("#toggleCompletionBtn").addEventListener("click", toggleCompletionButtonState);
 }
 
 // Initialisierung
