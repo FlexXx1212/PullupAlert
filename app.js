@@ -276,6 +276,8 @@ function startCountdown() {
 
 function updateTimerControlState(running) {
   const control = $("#timerControl");
+  const timerWrapper = document.querySelector(".timer-wrapper");
+  const timerNumber = $("#countdown");
   if (!control) return;
 
   const icon = control.querySelector("i");
@@ -287,6 +289,9 @@ function updateTimerControlState(running) {
   if (icon) {
     icon.className = `fas ${isRunning ? "fa-stop" : "fa-play"}`;
   }
+
+  timerWrapper?.classList.toggle("timer-wrapper--active", isRunning);
+  timerNumber?.classList.toggle("timer-number--active", isRunning);
 }
 
 function toggleCountdown() {

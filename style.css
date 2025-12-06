@@ -544,13 +544,24 @@ body {
   overflow: hidden;
 }
 
+.timer-wrapper--active {
+  border-color: var(--accent);
+  box-shadow: 0 14px 30px rgba(63, 208, 255, 0.35);
+}
+
 /* Double the size of the timer number */
 .timer-number {
   position: relative;
   z-index: 1;
   font-size: clamp(4rem, 6vw, 5.2rem);
   font-variant-numeric: tabular-nums;
+  color: var(--text);
   transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.timer-number--active {
+  color: var(--accent);
+  text-shadow: 0 10px 28px rgba(63, 208, 255, 0.35);
 }
 
 .timer-wrapper:hover .timer-number {
