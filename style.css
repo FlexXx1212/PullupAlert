@@ -155,6 +155,18 @@ body {
   letter-spacing: 0.05em;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.standup-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .app-subtitle {
   margin: 4px 0 0;
   font-size: 0.9rem;
@@ -747,16 +759,46 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-muted);
-  margin-right: 12px;
+  color: var(--accent);
 }
 
 .standup-timer.active {
-  color: var(--accent);
+  color: #9ed0ff;
 }
 
 .standup-timer.standing {
   color: var(--success);
+}
+
+.standup-reset {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.standup-reset:hover:not(:disabled) {
+  background: rgba(62, 140, 255, 0.08);
+  color: #b9deff;
+  transform: rotate(-10deg);
+}
+
+.standup-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(62, 140, 255, 0.35);
+}
+
+.standup-reset:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .standup-settings {

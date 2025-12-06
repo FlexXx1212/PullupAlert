@@ -824,6 +824,11 @@ function getRandomMinutes(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function resetStandUpTimer() {
+  if (!standUpSettings.enabled) return;
+  startSittingPhase();
+}
+
 function initStandUpLogic() {
   loadStandUpSettings();
   loadStandUpState();
@@ -834,6 +839,7 @@ function initStandUpLogic() {
   const maxTimeIn = $("#suMaxTime");
   const minDurIn = $("#suMinDur");
   const maxDurIn = $("#suMaxDur");
+  const resetBtn = $("#standUpReset");
 
   if (toggle) {
     toggle.checked = standUpSettings.enabled;
@@ -842,6 +848,11 @@ function initStandUpLogic() {
       saveStandUpSettings();
       handleStandUpToggle();
     });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", resetStandUpTimer);
+    resetBtn.disabled = !standUpSettings.enabled;
   }
 
   // Inputs
@@ -908,14 +919,23 @@ function startStandingPhase() {
 
 function updateStandUpTicker() {
   const timerEl = $("#standUpTimer");
+  const resetBtn = $("#standUpReset");
   if (!timerEl) return;
 
   if (!standUpSettings.enabled || standUpState.phase === "IDLE") {
     timerEl.style.display = "none";
+    if (resetBtn) {
+      resetBtn.style.display = "none";
+      resetBtn.disabled = true;
+    }
     return;
   }
 
   timerEl.style.display = "inline-block";
+  if (resetBtn) {
+    resetBtn.style.display = "inline-flex";
+    resetBtn.disabled = false;
+  }
   const now = Date.now();
   let diff = standUpState.targetTime - now;
 
