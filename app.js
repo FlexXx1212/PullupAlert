@@ -314,6 +314,7 @@ function saveWorkoutsToStorage(workoutsData) {
 // CRUD
 function addWorkout(workoutData) {
   const newId = "w_" + Date.now();
+  const initialCompleted = Boolean(workoutData.completed);
   const newWorkout = { ...workoutData, id: newId };
   // Zu lokaler Liste hinzufügen (mit Laufzeit-Props)
   const todayKey = getTodayKey();
@@ -329,7 +330,7 @@ function addWorkout(workoutData) {
     isToday,
     alertedInitially: false,
     nextReminderAt: null,
-    completed: false,
+    completed: initialCompleted,
     lastDayKey: todayKey
   };
 
@@ -337,6 +338,7 @@ function addWorkout(workoutData) {
   workouts.sort((a, b) => a.time.localeCompare(b.time)); // Nach Zeit sortieren
 
   saveWorkoutsToStorage(workouts);
+  setWorkoutCompleted(newId, initialCompleted);
   renderOverview();
 }
 
@@ -582,7 +584,7 @@ function setToggleCompletionButtonState(state) {
 
 function toggleCompletionButtonState() {
   const toggleBtn = $("#toggleCompletionBtn");
-  if (!toggleBtn || toggleBtn.style.display === "none") return;
+  if (!toggleBtn) return;
   const nextState = toggleBtn.dataset.state === "completed" ? "pending" : "completed";
   setToggleCompletionButtonState(nextState);
 }
@@ -639,19 +641,14 @@ function openModal(workout = null) {
       closeModal();
     };
 
-    if (workout.completed) {
-      toggleBtn.style.display = "inline-flex";
-      setToggleCompletionButtonState("completed");
-    } else {
-      toggleBtn.style.display = "none";
-      setToggleCompletionButtonState("completed");
-    }
+    toggleBtn.style.display = "inline-flex";
+    setToggleCompletionButtonState(workout.completed ? "completed" : "pending");
   } else {
     // Create Mode
     title.textContent = "Neues Workout";
     deleteBtn.style.display = "none";
-    toggleBtn.style.display = "none";
-    setToggleCompletionButtonState("completed");
+    toggleBtn.style.display = "inline-flex";
+    setToggleCompletionButtonState("pending");
     // Default: Alle Tage ausgewählt
     daysContainer.querySelectorAll("input").forEach(cb => cb.checked = true);
   }
@@ -692,8 +689,7 @@ function handleModalSubmit(e) {
     .map(cb => cb.value);
 
   const toggleBtn = $("#toggleCompletionBtn");
-  const hasToggle = toggleBtn && toggleBtn.style.display !== "none";
-  const completionState = hasToggle ? toggleBtn.dataset.state === "completed" : null;
+  const completionState = toggleBtn ? toggleBtn.dataset.state === "completed" : null;
 
   const data = {
     title,
@@ -717,6 +713,7 @@ function handleModalSubmit(e) {
       }
     }
   } else {
+    data.completed = completionState ?? false;
     addWorkout(data);
   }
   closeModal();
