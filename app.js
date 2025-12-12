@@ -646,7 +646,21 @@ function setupReminderTicker() {
 }
 
 function triggerWorkoutAlert(workout, isReminder) {
-  showActiveWorkout(workout);
+  const activeView = document.getElementById("activeView");
+  const isActiveViewVisible = activeView?.classList.contains("view--active");
+  const hasActiveUnfinishedWorkout =
+    currentWorkout &&
+    !currentWorkout.completed &&
+    isActiveViewVisible;
+
+  const isSameWorkout = currentWorkout && currentWorkout.id === workout.id;
+
+  // Wenn bereits ein anderes Workout geöffnet und noch nicht abgeschlossen ist,
+  // soll die Ansicht nicht automatisch gewechselt werden.
+  if (!hasActiveUnfinishedWorkout || isSameWorkout) {
+    showActiveWorkout(workout);
+  }
+
   playAlertSound();
   startTitleBlink();
   sendWorkoutNotification(workout, isReminder);
