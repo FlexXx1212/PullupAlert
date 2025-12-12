@@ -880,10 +880,18 @@ function setupEventListeners() {
   }
 
   document.addEventListener("keydown", (event) => {
-    if (event.code === "Space") {
-      event.preventDefault();
-      toggleCountdown();
-    }
+    if (event.code !== "Space") return;
+
+    const target = event.target;
+    const isTypingField = target instanceof HTMLElement && (
+      target.isContentEditable ||
+      ["INPUT", "TEXTAREA"].includes(target.tagName)
+    );
+
+    if (isTypingField) return;
+
+    event.preventDefault();
+    toggleCountdown();
   });
 
   // Modal Events
