@@ -5,7 +5,7 @@
     {
       "id": "morning",
       "time": "10:30",
-      "title": "1 - Rücken & Bizeps",
+      "title": "Rücken & Bizeps",
       "label": "Morgens",
       "grip": "Schulterbreiter Untergriff",
       "days": [
@@ -21,7 +21,7 @@
     {
       "id": "noon",
       "time": "11:00",
-      "title": "2 - Ganzkörper Workout",
+      "title": "Ganzkörper Workout",
       "label": "Mittags",
       "grip": "",
       "days": [
@@ -32,13 +32,13 @@
         "Fr"
       ],
       "exercises": [
-        "BetterMe App Workout"
+        "Video / App Workout"
       ]
     },
     {
       "id": "afternoon",
       "time": "15:00",
-      "title": "3 - Schultern & oberer Rücken",
+      "title": "Schultern & oberer Rücken",
       "label": "Nachmittags",
       "grip": "Weiter Obergriff",
       "days": [
@@ -54,7 +54,7 @@
     {
       "id": "evening",
       "time": "20:00",
-      "title": "4 - Arme & Bauch",
+      "title": "Arme & Bauch",
       "label": "Abends",
       "grip": "Neutralgriff",
       "days": [
@@ -70,7 +70,7 @@
     {
       "id": "shoulder",
       "time": "20:15",
-      "title": "5 - Schulter",
+      "title": "Schulter",
       "label": "Abends",
       "grip": "",
       "days": [
