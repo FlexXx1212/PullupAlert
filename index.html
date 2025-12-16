@@ -21,10 +21,28 @@
   <main id="app">
     <header class="app-header">
       <div class="header-left">
-        <h1 class="app-title">Pullup Alert</h1>
-        <p class="app-subtitle">Deine tägliche Klimmzug-Routine</p>
+        <div class="title-row">
+          <h1 class="app-title">Pullup Alert</h1>
+          <span id="dateStatus" class="date-pill">Heute</span>
+        </div>
+        <div class="subtitle-row">
+          <p class="app-subtitle">Deine tägliche Klimmzug-Routine</p>
+          <span id="selectedDateLabel" class="date-label"></span>
+        </div>
       </div>
       <div class="header-right">
+        <div class="date-actions">
+          <button id="prevDayBtn" class="btn btn--ghost date-nav-btn" type="button" aria-label="Vorheriger Tag">
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          </button>
+          <button id="todayBtn" class="btn btn--primary date-nav-today" type="button" aria-label="Zurück zu heute">
+            <i class="fa-regular fa-calendar-day" aria-hidden="true"></i>
+            <span>Heute</span>
+          </button>
+          <button id="nextDayBtn" class="btn btn--ghost date-nav-btn" type="button" aria-label="Nächster Tag">
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
         <div class="standup-inline">
           <span id="standUpTimer" class="standup-timer" style="display: none;"></span>
           <button
@@ -38,7 +56,6 @@
             <i class="fas fa-redo" aria-hidden="true"></i>
           </button>
         </div>
-        <span id="currentTime" class="current-time" aria-label="Aktuelle Uhrzeit"></span>
       </div>
     </header>
 
@@ -53,25 +70,6 @@
       <p class="hint">
         Workouts werden automatisch zur richtigen Uhrzeit gestartet. Du kannst sie auch manuell öffnen.
       </p>
-
-      <div class="date-toolbar" aria-label="Tag auswählen">
-        <div class="date-info">
-          <span id="selectedDateLabel" class="date-info__label"></span>
-          <span id="dateStatus" class="date-pill">Heute</span>
-        </div>
-        <div class="date-actions">
-          <button id="prevDayBtn" class="btn btn--ghost date-nav-btn" type="button" aria-label="Vorheriger Tag">
-            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
-          </button>
-          <button id="todayBtn" class="btn btn--primary date-nav-today" type="button" aria-label="Zurück zu heute">
-            <i class="fa-regular fa-calendar-day" aria-hidden="true"></i>
-            <span>Heute</span>
-          </button>
-          <button id="nextDayBtn" class="btn btn--ghost date-nav-btn" type="button" aria-label="Nächster Tag">
-            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
-          </button>
-        </div>
-      </div>
 
       <form id="settingsForm" class="settings-form">
         <div class="setting-group">

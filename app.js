@@ -106,18 +106,25 @@ function sendWorkoutNotification(workout, isReminder) {
 }
 
 // Hilfsfunktionen für Datum/Zeit
-function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
+function formatDateKeyLocal(date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayKey() {
+  return formatDateKeyLocal(startOfDay(new Date()));
+}
+
 function getDateKey(date = new Date()) {
-  return startOfDay(date).toISOString().slice(0, 10);
+  return formatDateKeyLocal(startOfDay(date));
 }
 
 function parseTimeToDate(timeStr, baseDate = new Date()) {
@@ -187,17 +194,29 @@ function formatDateLabel(date) {
   }).format(date);
 }
 
+function formatShortDateLabel(date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  })
+    .format(date)
+    .replace(/\.$/, "");
+}
+
 function updateDateNavUI() {
   const label = $("#selectedDateLabel");
   const pill = $("#dateStatus");
   const todayBtn = $("#todayBtn");
   const isToday = isViewingToday();
+  const shortDate = formatShortDateLabel(activeDate);
 
   if (label) {
-    label.textContent = formatDateLabel(activeDate);
+    label.textContent = isToday ? "" : shortDate;
+    label.classList.toggle("date-label--hidden", isToday);
   }
   if (pill) {
-    pill.textContent = isToday ? "Heute" : "Nicht heute";
+    pill.textContent = isToday ? "Heute" : shortDate;
     pill.classList.toggle("date-pill--off", !isToday);
   }
   if (todayBtn) {

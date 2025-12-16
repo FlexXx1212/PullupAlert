@@ -149,6 +149,12 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .app-title {
   margin: 0;
   font-size: clamp(1.6rem, 2.2vw, 2rem);
@@ -159,6 +165,7 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-wrap: wrap;
 }
 
 .standup-inline {
@@ -173,14 +180,22 @@ body {
   color: var(--text-muted);
 }
 
-.current-time {
-  font-variant-numeric: tabular-nums;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background: rgba(10, 15, 26, 0.9);
-  border: 1px solid var(--accent-soft);
-  color: var(--accent);
-  font-weight: 500;
+.subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.date-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.date-label--hidden {
+  display: none;
 }
 
 /* Views */
@@ -219,40 +234,14 @@ body {
   font-size: 1.3rem;
 }
 
-.date-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  margin: 0 0 18px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-}
-
-.date-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.date-info__label {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-transform: capitalize;
-  color: var(--text);
-}
-
 .date-pill {
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: var(--radius-pill);
-  background: var(--accent-soft);
+  background: rgba(63, 208, 255, 0.12);
   border: 1px solid var(--accent-soft);
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
+  line-height: 1;
 }
 
 .date-pill--off {
@@ -877,18 +866,23 @@ body {
     width: 100%;
   }
 
-  .date-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .date-actions {
     width: 100%;
     justify-content: space-between;
   }
 
-  .date-info {
+  .header-right {
     width: 100%;
+    justify-content: space-between;
+  }
+
+  .title-row,
+  .subtitle-row {
+    width: 100%;
+  }
+
+  .subtitle-row {
+    align-items: flex-start;
   }
 
   .form-row {
