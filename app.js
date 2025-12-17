@@ -67,6 +67,7 @@ let isBlinking = false;
 let timerDurationSeconds = DEFAULT_TIMER_DURATION_SECONDS;
 let timerRemaining = timerDurationSeconds;
 let isCountdownRunning = false;
+let activeDate = startOfDay(new Date());
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -105,17 +106,34 @@ function sendWorkoutNotification(workout, isReminder) {
 }
 
 // Hilfsfunktionen für Datum/Zeit
-function getTodayKey() {
-  return new Date().toISOString().slice(0, 10);
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-function parseTimeToTodayDate(timeStr) {
-  const [hourStr, minuteStr] = timeStr.split(":");
-  const now = new Date();
+function formatDateKeyLocal(date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayKey() {
+  return formatDateKeyLocal(startOfDay(new Date()));
+}
+
+function getDateKey(date = new Date()) {
+  return formatDateKeyLocal(startOfDay(date));
+}
+
+function parseTimeToDate(timeStr, baseDate = new Date()) {
+  const [hourStr, minuteStr] = (timeStr || "00:00").split(":");
+  const day = startOfDay(baseDate);
   return new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
     Number(hourStr),
     Number(minuteStr),
     0,
@@ -142,20 +160,80 @@ function saveCompletions(completions) {
   }
 }
 
-function isWorkoutCompleted(workoutId) {
+function isWorkoutCompleted(workoutId, date = new Date()) {
   const completions = loadCompletions();
-  const todayKey = getTodayKey();
-  return Boolean(completions[todayKey]?.[workoutId]);
+  const dateKey = getDateKey(date);
+  return Boolean(completions[dateKey]?.[workoutId]);
 }
 
-function setWorkoutCompleted(workoutId, completed) {
+function setWorkoutCompleted(workoutId, completed, date = new Date()) {
   const completions = loadCompletions();
-  const todayKey = getTodayKey();
-  if (!completions[todayKey]) {
-    completions[todayKey] = {};
+  const dateKey = getDateKey(date);
+  if (!completions[dateKey]) {
+    completions[dateKey] = {};
   }
-  completions[todayKey][workoutId] = completed;
+  completions[dateKey][workoutId] = completed;
   saveCompletions(completions);
+}
+
+function isViewingToday(date = activeDate) {
+  return getDateKey(date) === getTodayKey();
+}
+
+function isWorkoutOnDate(workout, date = activeDate) {
+  const dayIndex = startOfDay(date).getDay();
+  return Array.isArray(workout.daysIndex) && workout.daysIndex.includes(dayIndex);
+}
+
+function formatDateLabel(date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatShortDateLabel(date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  })
+    .format(date)
+    .replace(/\.$/, "");
+}
+
+function updateDateNavUI() {
+  const pill = $("#dateStatus");
+  const todayBtn = $("#todayBtn");
+  const isToday = isViewingToday();
+  const shortDate = formatShortDateLabel(activeDate);
+
+  if (pill) {
+    pill.textContent = isToday ? "Heute" : shortDate;
+    pill.style.display = isToday ? "none" : "inline-block";
+  }
+  if (todayBtn) {
+    todayBtn.disabled = isToday;
+    todayBtn.classList.toggle("btn--disabled", isToday);
+  }
+}
+
+function setActiveDate(newDate) {
+  activeDate = startOfDay(newDate);
+  updateDateNavUI();
+  renderOverview();
+  const isActiveViewVisible = document.getElementById("activeView")?.classList.contains("view--active");
+  if (isActiveViewVisible && currentWorkout) {
+    showActiveWorkout(currentWorkout);
+  }
+}
+
+function changeActiveDateBy(days) {
+  const updated = new Date(activeDate);
+  updated.setDate(updated.getDate() + days);
+  setActiveDate(updated);
 }
 
 // UI-Helpers
@@ -360,11 +438,12 @@ async function loadWorkouts() {
   }
 
   // Workouts verarbeiten
+  const today = new Date();
   const todayKey = getTodayKey();
-  const todayDayIndex = new Date().getDay();
+  const todayDayIndex = today.getDay();
 
   workouts = dataWorkouts.map((w) => {
-    const dateTime = parseTimeToTodayDate(w.time);
+    const dateTime = parseTimeToDate(w.time, today);
     let daysArr = Array.isArray(w.days) && w.days.length > 0 ? w.days : ALL_WEEKDAYS;
     const daysIndex = daysArr.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
     const isToday = daysIndex.includes(todayDayIndex);
@@ -377,7 +456,7 @@ async function loadWorkouts() {
       isToday,
       alertedInitially: false,
       nextReminderAt: null,
-      completed: isWorkoutCompleted(w.id),
+      completed: isWorkoutCompleted(w.id, today),
       lastDayKey: todayKey,
     };
   });
@@ -403,11 +482,13 @@ function addWorkout(workoutData) {
   const initialCompleted = Boolean(workoutData.completed);
   const newWorkout = { ...workoutData, id: newId };
   // Zu lokaler Liste hinzufügen (mit Laufzeit-Props)
-  const todayKey = getTodayKey();
-  const todayDayIndex = new Date().getDay();
-  const dateTime = parseTimeToTodayDate(newWorkout.time);
+  const today = new Date();
+  const todayKey = getDateKey(today);
+  const todayDayIndex = today.getDay();
+  const dateTime = parseTimeToDate(newWorkout.time, today);
   const daysIndex = newWorkout.days.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
   const isToday = daysIndex.includes(todayDayIndex);
+  const completionForToday = isWorkoutCompleted(newId, today);
 
   const runtimeWorkout = {
     ...newWorkout,
@@ -416,15 +497,19 @@ function addWorkout(workoutData) {
     isToday,
     alertedInitially: false,
     nextReminderAt: null,
-    completed: initialCompleted,
+    completed: completionForToday,
     lastDayKey: todayKey
   };
+
+  if (isViewingToday()) {
+    runtimeWorkout.completed = initialCompleted;
+  }
 
   workouts.push(runtimeWorkout);
   workouts.sort((a, b) => a.time.localeCompare(b.time)); // Nach Zeit sortieren
 
   saveWorkoutsToStorage(workouts);
-  setWorkoutCompleted(newId, initialCompleted);
+  setWorkoutCompleted(newId, initialCompleted, activeDate);
   renderOverview();
 }
 
@@ -434,7 +519,7 @@ function updateWorkout(id, workoutData) {
 
   const oldWorkout = workouts[idx];
   const todayDayIndex = new Date().getDay();
-  const dateTime = parseTimeToTodayDate(workoutData.time);
+  const dateTime = parseTimeToDate(workoutData.time, new Date());
   const daysIndex = workoutData.days.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
   const isToday = daysIndex.includes(todayDayIndex);
 
@@ -473,15 +558,24 @@ function renderOverview() {
   }
 
   const container = $("#workoutList");
+  updateDateNavUI();
   if (!container) return;
   container.innerHTML = "";
   const now = new Date();
+  const completions = loadCompletions();
+  const activeDateKey = getDateKey(activeDate);
+  const isTodayView = isViewingToday();
+  const isPastView = activeDate < startOfDay(new Date());
 
   workouts.forEach((workout) => {
+    const isOnSelectedDay = isWorkoutOnDate(workout, activeDate);
+    const isCompleted = Boolean(completions?.[activeDateKey]?.[workout.id]);
+    const scheduledDateTime = parseTimeToDate(workout.time, activeDate);
+
     const card = document.createElement("article");
     card.className = "workout-card";
-    if (workout.completed) card.classList.add("workout-card--completed");
-    if (!workout.isToday && !workout.completed) card.classList.add("workout-card--not-today");
+    if (isCompleted) card.classList.add("workout-card--completed");
+    if (!isOnSelectedDay && !isCompleted) card.classList.add("workout-card--not-today");
     card.dataset.workoutId = workout.id;
 
     // Edit Button
@@ -517,14 +611,22 @@ function renderOverview() {
     const statusEl = document.createElement("span");
     statusEl.className = "workout-status";
     let statusText;
-    if (workout.completed) {
+    if (isCompleted) {
       statusText = "Abgeschlossen";
       statusEl.classList.add("workout-status--completed");
-    } else if (!workout.isToday) {
-      statusText = "Nicht heute";
+    } else if (!isOnSelectedDay) {
+      statusText = "Ruhetag";
       statusEl.classList.add("workout-status--not-today");
-    } else if (now >= workout.dateTime) {
-      statusText = "Fällig";
+    } else if (isTodayView) {
+      if (now >= scheduledDateTime) {
+        statusText = "Fällig";
+        statusEl.classList.add("workout-status--overdue");
+      } else {
+        statusText = "Geplant";
+        statusEl.classList.add("workout-status--pending");
+      }
+    } else if (isPastView) {
+      statusText = "Nachholen";
       statusEl.classList.add("workout-status--overdue");
     } else {
       statusText = "Geplant";
@@ -534,12 +636,9 @@ function renderOverview() {
 
     const actionBtn = document.createElement("button");
     actionBtn.type = "button";
-    actionBtn.className = "btn btn--primary";
-    if (workout.completed || !workout.isToday) {
-      actionBtn.textContent = "Vorschau";
-    } else {
-      actionBtn.textContent = "Starten";
-    }
+    const canStart = isOnSelectedDay && !isCompleted && (isTodayView || isPastView);
+    actionBtn.className = `btn ${canStart ? "btn--primary" : "btn--ghost"}`;
+    actionBtn.textContent = canStart ? "Starten" : "Vorschau";
     actionBtn.dataset.action = "openWorkout";
     actionBtn.dataset.workoutId = workout.id;
 
@@ -564,6 +663,11 @@ function showActiveWorkout(workout) {
   $("#activeTitle").textContent = workout.title;
   $("#activeLabel").textContent = workout.label || "";
   $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
+  const activeDateLabel = $("#activeDate");
+  if (activeDateLabel) {
+    activeDateLabel.textContent = formatDateLabel(activeDate);
+    activeDateLabel.classList.toggle("active-date--off", !isViewingToday());
+  }
 
   const gripEl = $("#activeGrip");
   if (workout.grip && workout.grip !== "-") {
@@ -584,13 +688,18 @@ function showActiveWorkout(workout) {
 
   const footer = document.querySelector('.active-footer');
   const container = document.querySelector('.active-container');
+  const isCompletedForDate = isWorkoutCompleted(workout.id, activeDate);
+  const isOnSelectedDay = isWorkoutOnDate(workout, activeDate);
+  const isPastView = activeDate < startOfDay(new Date());
+  const allowActiveControls = isOnSelectedDay && !isCompletedForDate && (isViewingToday() || isPastView);
 
-  if (workout.completed || !workout.isToday) {
-    if (footer) footer.style.display = 'none';
-    if (container) container.classList.add('preview-mode');
-  } else {
+  if (allowActiveControls) {
     if (footer) footer.style.display = '';
     if (container) container.classList.remove('preview-mode');
+    resetCountdown();
+  } else {
+    if (footer) footer.style.display = 'none';
+    if (container) container.classList.add('preview-mode');
     resetCountdown();
   }
   showView("activeView");
@@ -598,8 +707,10 @@ function showActiveWorkout(workout) {
 
 function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
-  currentWorkout.completed = true;
-  setWorkoutCompleted(currentWorkout.id, true);
+  if (isViewingToday()) {
+    currentWorkout.completed = true;
+  }
+  setWorkoutCompleted(currentWorkout.id, true, activeDate);
   stopCountdown();
   stopTitleBlink();
   showView("overviewView");
@@ -617,10 +728,10 @@ function setupReminderTicker() {
 
     workouts.forEach((w) => {
       if (w.lastDayKey !== todayKey) {
-        w.completed = false;
+        w.completed = isWorkoutCompleted(w.id, now);
         w.alertedInitially = false;
         w.nextReminderAt = null;
-        w.dateTime = parseTimeToTodayDate(w.time);
+        w.dateTime = parseTimeToDate(w.time, now);
         w.lastDayKey = todayKey;
         w.isToday = w.daysIndex.includes(todayDayIndex);
         needsRerender = true;
@@ -650,7 +761,7 @@ function triggerWorkoutAlert(workout, isReminder) {
   const isActiveViewVisible = activeView?.classList.contains("view--active");
   const hasActiveUnfinishedWorkout =
     currentWorkout &&
-    !currentWorkout.completed &&
+    !isWorkoutCompleted(currentWorkout.id, activeDate) &&
     isActiveViewVisible;
 
   const isSameWorkout = currentWorkout && currentWorkout.id === workout.id;
@@ -746,7 +857,8 @@ function openModal(workout = null) {
     };
 
     toggleBtn.style.display = "inline-flex";
-    setToggleCompletionButtonState(workout.completed ? "completed" : "pending");
+    const completionState = isWorkoutCompleted(workout.id, activeDate);
+    setToggleCompletionButtonState(completionState ? "completed" : "pending");
   } else {
     // Create Mode
     title.textContent = "Neues Workout";
@@ -810,9 +922,9 @@ function handleModalSubmit(e) {
     }
     updateWorkout(id, data);
     if (completionState !== null) {
-      setWorkoutCompleted(id, completionState);
+      setWorkoutCompleted(id, completionState, activeDate);
       const updatedWorkout = workouts.find((w) => w.id === id);
-      if (updatedWorkout) {
+      if (updatedWorkout && isViewingToday()) {
         updatedWorkout.completed = completionState;
       }
     }
@@ -850,6 +962,14 @@ function setupCustomInputs() {
 
 // Event-Handler
 function setupEventListeners() {
+  const prevDayBtn = $("#prevDayBtn");
+  const nextDayBtn = $("#nextDayBtn");
+  const todayBtn = $("#todayBtn");
+
+  if (prevDayBtn) prevDayBtn.addEventListener("click", () => changeActiveDateBy(-1));
+  if (nextDayBtn) nextDayBtn.addEventListener("click", () => changeActiveDateBy(1));
+  if (todayBtn) todayBtn.addEventListener("click", () => setActiveDate(new Date()));
+
   const list = $("#workoutList");
   list.addEventListener("click", (event) => {
     const target = event.target;
