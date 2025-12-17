@@ -244,12 +244,6 @@ body {
   line-height: 1;
 }
 
-.date-pill--off {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: var(--border-subtle);
-  color: var(--text-muted);
-}
-
 .date-actions {
   display: flex;
   align-items: center;

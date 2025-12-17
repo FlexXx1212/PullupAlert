@@ -205,19 +205,14 @@ function formatShortDateLabel(date) {
 }
 
 function updateDateNavUI() {
-  const label = $("#selectedDateLabel");
   const pill = $("#dateStatus");
   const todayBtn = $("#todayBtn");
   const isToday = isViewingToday();
   const shortDate = formatShortDateLabel(activeDate);
 
-  if (label) {
-    label.textContent = isToday ? "" : shortDate;
-    label.classList.toggle("date-label--hidden", isToday);
-  }
   if (pill) {
     pill.textContent = isToday ? "Heute" : shortDate;
-    pill.classList.toggle("date-pill--off", !isToday);
+    pill.style.display = isToday ? "none" : "inline-block";
   }
   if (todayBtn) {
     todayBtn.disabled = isToday;
