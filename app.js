@@ -880,6 +880,20 @@ function closeModal() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+function openSettingsModal() {
+  const modal = $("#settingsModal");
+  if (!modal) return;
+  modal.classList.remove("modal--hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeSettingsModal() {
+  const modal = $("#settingsModal");
+  if (!modal) return;
+  modal.classList.add("modal--hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
 function updateModalPreview() {
   const text = $("#wfExercises").value;
   if (!text.trim()) {
@@ -1022,6 +1036,20 @@ function setupEventListeners() {
   $("#workoutForm").addEventListener("submit", handleModalSubmit);
   $("#wfExercises").addEventListener("input", updateModalPreview);
   $("#toggleCompletionBtn").addEventListener("click", toggleCompletionButtonState);
+
+  const openSettingsBtn = $("#openSettingsBtn");
+  const closeSettingsBtn = $("#closeSettingsBtn");
+  const settingsBackdrop = $("#settingsModalBackdrop");
+
+  if (openSettingsBtn) {
+    openSettingsBtn.addEventListener("click", openSettingsModal);
+  }
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener("click", closeSettingsModal);
+  }
+  if (settingsBackdrop) {
+    settingsBackdrop.addEventListener("click", closeSettingsModal);
+  }
 }
 
 // Initialisierung

@@ -42,6 +42,9 @@
             <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
           </button>
         </div>
+        <button id="openSettingsBtn" class="btn btn--ghost settings-btn" type="button" aria-label="Einstellungen öffnen">
+          <i class="fa-solid fa-gear" aria-hidden="true"></i>
+        </button>
         <div class="standup-inline">
           <span id="standUpTimer" class="standup-timer" style="display: none;"></span>
           <button
@@ -70,64 +73,8 @@
         Workouts werden automatisch zur richtigen Uhrzeit gestartet. Du kannst sie auch manuell öffnen.
       </p>
 
-      <form id="settingsForm" class="settings-form">
-        <div class="setting-group">
-          <label for="setsInput">Max. Sets:</label>
-          <div class="number-control">
-            <button type="button" class="btn-control" data-action="dec" data-target="setsInput">-</button>
-            <input type="number" id="setsInput" min="1" max="99" readonly />
-            <button type="button" class="btn-control" data-action="inc" data-target="setsInput">+</button>
-          </div>
-        </div>
-        <div class="setting-group">
-          <label for="repsInput">Max. Reps:</label>
-          <div class="number-control">
-            <button type="button" class="btn-control" data-action="dec" data-target="repsInput">-</button>
-            <input type="number" id="repsInput" min="1" max="99" readonly />
-            <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
-          </div>
-        </div>
-        <div class="setting-group">
-          <label for="timerDurationInput">Timer (Sek.):</label>
-          <div class="number-control">
-            <button type="button" class="btn-control" data-action="dec" data-target="timerDurationInput">-</button>
-            <input type="number" id="timerDurationInput" value="75" min="1" max="999" readonly />
-            <button type="button" class="btn-control" data-action="inc" data-target="timerDurationInput">+</button>
-          </div>
-        </div>
-      </form>
-
       <div id="workoutList" class="workout-list">
         <!-- Karten werden per JS eingefügt -->
-      </div>
-
-      <!-- Stand Up Alert Settings -->
-      <div class="standup-settings">
-        <div class="standup-header">
-          <h3>Stand Up Alert</h3>
-          <label class="switch">
-            <input type="checkbox" id="standUpToggle">
-            <span class="slider round"></span>
-          </label>
-        </div>
-        <div class="standup-controls">
-          <div class="setting-group">
-            <label>Intervall (Min-Max):</label>
-            <div class="range-inputs">
-              <input type="number" id="suMinTime" value="45" min="1">
-              <span>-</span>
-              <input type="number" id="suMaxTime" value="75" min="1">
-            </div>
-          </div>
-          <div class="setting-group">
-            <label>Steh-Dauer (Min-Max):</label>
-            <div class="range-inputs">
-              <input type="number" id="suMinDur" value="10" min="1">
-              <span>-</span>
-              <input type="number" id="suMaxDur" value="20" min="1">
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -233,6 +180,76 @@
               <button type="submit" class="btn btn--primary">Speichern</button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal modal--hidden" aria-hidden="true">
+      <div class="modal-backdrop" id="settingsModalBackdrop"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Einstellungen</h2>
+          <button id="closeSettingsBtn" class="btn-icon" aria-label="Schließen">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-section">
+            <h3>Workout Einstellungen</h3>
+            <form id="settingsForm" class="settings-form">
+              <div class="setting-group">
+                <label for="setsInput">Max. Sets:</label>
+                <div class="number-control">
+                  <button type="button" class="btn-control" data-action="dec" data-target="setsInput">-</button>
+                  <input type="number" id="setsInput" min="1" max="99" readonly />
+                  <button type="button" class="btn-control" data-action="inc" data-target="setsInput">+</button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <label for="repsInput">Max. Reps:</label>
+                <div class="number-control">
+                  <button type="button" class="btn-control" data-action="dec" data-target="repsInput">-</button>
+                  <input type="number" id="repsInput" min="1" max="99" readonly />
+                  <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
+                </div>
+              </div>
+              <div class="setting-group">
+                <label for="timerDurationInput">Timer (Sek.):</label>
+                <div class="number-control">
+                  <button type="button" class="btn-control" data-action="dec" data-target="timerDurationInput">-</button>
+                  <input type="number" id="timerDurationInput" value="75" min="1" max="999" readonly />
+                  <button type="button" class="btn-control" data-action="inc" data-target="timerDurationInput">+</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="settings-section">
+            <div class="standup-header">
+              <h3>Stand Up Alert</h3>
+              <label class="switch">
+                <input type="checkbox" id="standUpToggle">
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="standup-controls">
+              <div class="setting-group">
+                <label>Intervall (Min-Max):</label>
+                <div class="range-inputs">
+                  <input type="number" id="suMinTime" value="45" min="1">
+                  <span>-</span>
+                  <input type="number" id="suMaxTime" value="75" min="1">
+                </div>
+              </div>
+              <div class="setting-group">
+                <label>Steh-Dauer (Min-Max):</label>
+                <div class="range-inputs">
+                  <input type="number" id="suMinDur" value="10" min="1">
+                  <span>-</span>
+                  <input type="number" id="suMaxDur" value="20" min="1">
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
