@@ -100,13 +100,8 @@
         </div>
 
         <div class="active-footer">
-          <div class="timer-section" aria-label="Pausen-Timer">
-            <div class="timer-wrapper">
-              <span id="countdown" class="timer-number">75</span>
-              <button id="timerControl" class="timer-control" type="button" aria-label="Timer starten" title="Timer starten">
-                <i class="fas fa-play" aria-hidden="true"></i>
-              </button>
-            </div>
+          <div class="timer-section" aria-label="Workout Timer">
+            <div id="workoutTimers" class="workout-timers"></div>
           </div>
           <button id="completeButton" class="btn btn--primary">
             Workout abschließen
@@ -164,6 +159,12 @@
               </p>
             </div>
 
+            <div class="form-group">
+              <label>Timer</label>
+              <div id="wfTimersContainer" class="timer-editor"></div>
+              <button type="button" id="addTimerBtn" class="btn btn--ghost btn--small">+ Timer hinzufügen</button>
+            </div>
+
             <div class="preview-box">
               <span class="preview-label">Vorschau:</span>
               <span id="wfPreview" class="preview-content">-</span>
@@ -210,14 +211,6 @@
                   <button type="button" class="btn-control" data-action="dec" data-target="repsInput">-</button>
                   <input type="number" id="repsInput" min="1" max="99" readonly />
                   <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
-                </div>
-              </div>
-              <div class="setting-group">
-                <label for="timerDurationInput">Timer (Sek.):</label>
-                <div class="number-control">
-                  <button type="button" class="btn-control" data-action="dec" data-target="timerDurationInput">-</button>
-                  <input type="number" id="timerDurationInput" value="75" min="1" max="999" readonly />
-                  <button type="button" class="btn-control" data-action="inc" data-target="timerDurationInput">+</button>
                 </div>
               </div>
             </form>
