@@ -685,6 +685,7 @@ function showActiveWorkout(workout) {
     li.textContent = resolveExerciseText(text, window.sets, window.reps);
     list.appendChild(li);
   });
+  updateExerciseListSizing(list, list.children.length);
 
   const footer = document.querySelector('.active-footer');
   const container = document.querySelector('.active-container');
@@ -703,6 +704,23 @@ function showActiveWorkout(workout) {
     resetCountdown();
   }
   showView("activeView");
+}
+
+function updateExerciseListSizing(list, count) {
+  if (!list) return;
+  const maxItems = 5;
+  const safeCount = Math.max(count, 1);
+  const scale = Math.min(1, maxItems / safeCount);
+  const clampedScale = Math.max(0.65, scale);
+  const minSize = (1.3 * clampedScale).toFixed(2);
+  const maxSize = (2.1 * clampedScale).toFixed(2);
+  const vwSize = (3 * clampedScale).toFixed(2);
+  const lineHeight = Math.max(1.1, 1.5 * clampedScale).toFixed(2);
+
+  list.style.setProperty("--exercise-font-min", `${minSize}rem`);
+  list.style.setProperty("--exercise-font-max", `${maxSize}rem`);
+  list.style.setProperty("--exercise-font-vw", `${vwSize}vw`);
+  list.style.setProperty("--exercise-line-height", lineHeight);
 }
 
 function markCurrentWorkoutCompleted() {

@@ -483,6 +483,7 @@ body {
 
 #activeView {
   align-items: stretch;
+  overflow: hidden;
 }
 
 #backToOverview {
@@ -553,8 +554,8 @@ body {
   padding: 0;
   max-width: 100%;
   text-align: left;
-  font-size: clamp(1.3rem, 3vw, 2.1rem);
-  line-height: 1.5;
+  font-size: clamp(var(--exercise-font-min, 1.3rem), var(--exercise-font-vw, 3vw), var(--exercise-font-max, 2.1rem));
+  line-height: var(--exercise-line-height, 1.5);
 }
 
 .exercise-list li {
