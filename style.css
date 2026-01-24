@@ -455,6 +455,11 @@ body {
   color: var(--text);
 }
 
+.btn--small {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
 .btn--danger {
   background: rgba(255, 75, 92, 0.1);
   color: var(--danger);
@@ -491,7 +496,16 @@ body {
   margin-bottom: 10px;
 }
 
+.active-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  min-height: -webkit-fill-available;
+  margin: 0 0 5% 0;
+}
+
 .active-container {
+  min-height: -webkit-fill-available;
   flex: 1;
   border-radius: var(--radius-xl);
   background: radial-gradient(circle at top, #171c29 0, #0d1019 55%);
@@ -578,7 +592,7 @@ body {
 .active-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -588,75 +602,85 @@ body {
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
-  flex: 1 1 240px;
+  width: min(200px, 32vw);
+  flex-shrink: 0;
 }
 
-.timer-wrapper {
-  position: relative;
+.workout-timers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.workout-timer {
+  width: 100%;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--accent-soft);
+  background: linear-gradient(135deg, rgba(12, 18, 30, 0.95), rgba(7, 12, 20, 0.95));
+  color: var(--text);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.workout-timer:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.workout-timer--active {
+  border-color: var(--accent);
+  box-shadow: 0 16px 34px rgba(63, 208, 255, 0.35);
+  transform: scale(1.05);
+}
+
+.workout-timer--running .workout-timer-time {
+  color: var(--accent);
+  text-shadow: 0 6px 18px rgba(63, 208, 255, 0.35);
+}
+
+.workout-timer-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 14px 22px;
-  min-width: 180px;
+  gap: 10px;
+}
+
+.workout-timer-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.workout-timer-badge {
+  padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: linear-gradient(135deg, rgba(12, 18, 30, 0.95), rgba(7, 12, 20, 0.95));
-  border: 1px solid var(--accent-soft);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-
-.timer-wrapper--active {
-  border-color: var(--accent);
-  box-shadow: 0 14px 30px rgba(63, 208, 255, 0.35);
-}
-
-/* Double the size of the timer number */
-.timer-number {
-  position: relative;
-  z-index: 1;
-  font-size: clamp(4rem, 6vw, 5.2rem);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  transition: filter var(--transition-fast), opacity var(--transition-fast);
-}
-
-.timer-number--active {
+  background: rgba(63, 208, 255, 0.15);
   color: var(--accent);
-  text-shadow: 0 10px 28px rgba(63, 208, 255, 0.35);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
-.timer-wrapper:hover .timer-number {
-  filter: blur(3px);
-  opacity: 0.75;
+.workout-timer-time {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-variant-numeric: tabular-nums;
 }
 
-.timer-control {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: radial-gradient(circle, rgba(15, 23, 36, 0.85) 0%, rgba(8, 12, 20, 0.6) 60%, transparent 80%);
-  color: var(--text);
+.workout-timer-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  border: none;
-  outline: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
-}
-
-.timer-control i {
-  font-size: clamp(4rem, 6vw, 5.2rem);
-  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-}
-
-.timer-wrapper:hover .timer-control,
-.timer-control:focus-visible {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(-2px);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(15, 23, 36, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
 
 /* Modal */
@@ -752,6 +776,69 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 1rem;
+}
+
+.timer-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated-soft);
+}
+
+.timer-row-fields {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.timer-name-input,
+.timer-seconds-input {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.timer-seconds-input {
+  max-width: 60px;
+}
+
+.timer-seconds-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.timer-repeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.timer-remove {
+  white-space: nowrap;
+}
+
+.timer-remove i {
+  font-size: 0.95rem;
 }
 
 .form-group input:focus,
@@ -855,8 +942,12 @@ body {
     align-items: stretch;
   }
 
-  .timer-wrapper {
-    justify-content: center;
+  .active-layout {
+    flex-direction: column;
+  }
+
+  .timer-section {
+    width: 100%;
   }
 
   .btn--primary {
@@ -890,6 +981,15 @@ body {
   .setting-group {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .timer-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .timer-row-fields {
+    grid-template-columns: 1fr;
   }
 }
 
