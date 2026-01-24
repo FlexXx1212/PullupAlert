@@ -507,6 +507,12 @@ body {
   gap: 14px;
 }
 
+.active-main {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
 .active-header {
   text-align: center;
 }
@@ -583,7 +589,7 @@ body {
 .active-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -593,6 +599,7 @@ body {
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
+  width: min(260px, 40%);
 }
 
 .workout-timers {
@@ -926,6 +933,14 @@ body {
   .active-footer {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+
+  .active-main {
+    flex-direction: column;
+  }
+
+  .timer-section {
+    width: 100%;
   }
 
   .btn--primary {
