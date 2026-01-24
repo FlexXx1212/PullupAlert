@@ -789,7 +789,7 @@ body {
 .modal-content {
   position: relative;
   width: 90%;
-  max-width: 500px;
+  max-width: 50%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
