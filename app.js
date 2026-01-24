@@ -375,13 +375,13 @@ function sendTimerNotification(timer) {
 
 function handleTimerFinished(timer) {
   playAlertSound();
-  sendTimerNotification(timer);
-  if (timer.repeating) {
-    resetTimer(timer.id);
-    updateTimerCards();
-  } else {
+  if (!timer.repeating) {
+    sendTimerNotification(timer);
     stopTimer(timer.id, { reset: true });
+    return;
   }
+  resetTimer(timer.id);
+  updateTimerCards();
 }
 
 function startTimer(timerId) {
@@ -1084,7 +1084,9 @@ function createTimerEditorRow(timer, container) {
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
   removeBtn.className = "btn btn--ghost timer-remove";
-  removeBtn.textContent = "Entfernen";
+  removeBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+  removeBtn.setAttribute("aria-label", "Timer entfernen");
+  removeBtn.setAttribute("title", "Timer entfernen");
   removeBtn.addEventListener("click", () => {
     row.remove();
     if (!container.querySelector(".timer-row")) {

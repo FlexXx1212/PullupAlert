@@ -593,7 +593,6 @@ body {
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
-  flex: 1 1 240px;
 }
 
 .workout-timers {
@@ -822,6 +821,10 @@ body {
 
 .timer-remove {
   white-space: nowrap;
+}
+
+.timer-remove i {
+  font-size: 0.95rem;
 }
 
 .form-group input:focus,
