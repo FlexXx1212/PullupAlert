@@ -13,6 +13,77 @@
   align-items: stretch;
 }
 
+.exercise-variables {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exercise-variable-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 0.7fr 0.7fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-elevated-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+}
+
+.exercise-variable-row input {
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 0.95rem;
+}
+
+.exercise-variable-row input::placeholder {
+  color: var(--text-muted);
+}
+
+.exercise-variable-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exercise-variable-row .btn--icon {
+  border-radius: 10px;
+  padding: 6px 10px;
+  height: auto;
+}
+
+@media (max-width: 720px) {
+  .exercise-variable-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "name prefix"
+      "sets reps"
+      "actions actions";
+  }
+
+  .exercise-variable-row input[data-field="name"] {
+    grid-area: name;
+  }
+
+  .exercise-variable-row input[data-field="prefix"] {
+    grid-area: prefix;
+  }
+
+  .exercise-variable-row input[data-field="sets"] {
+    grid-area: sets;
+  }
+
+  .exercise-variable-row input[data-field="reps"] {
+    grid-area: reps;
+  }
+
+  .exercise-variable-actions {
+    grid-area: actions;
+  }
+}
+
 .setting-group {
   display: flex;
   align-items: center;
@@ -718,7 +789,7 @@ body {
 .modal-content {
   position: relative;
   width: 90%;
-  max-width: 500px;
+  max-width: 50%;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
