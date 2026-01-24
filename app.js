@@ -2,6 +2,14 @@
 const SETTINGS_KEY = "pullup-alert-settings";
 const WORKOUTS_KEY = "pullup-alert-workouts"; // Neuer Key für Workouts
 
+const DEFAULT_EXERCISE_VARIABLES = [
+  { name: "Pullups", prefix: "PULL", sets: 2, reps: 3 },
+  { name: "Pushups", prefix: "PUSH", sets: 3, reps: 10 },
+  { name: "Dips", prefix: "DIP", sets: 3, reps: 5 },
+  { name: "L-Sit", prefix: "L", sets: 5, reps: 15 },
+  { name: "Lateral Raises", prefix: "LAT", sets: 2, reps: 30 }
+];
+
 // Settings laden/speichern
 function loadSettings() {
   try {
@@ -19,13 +27,90 @@ function saveSettings(settings) {
   } catch { }
 }
 
+function sanitizePrefix(prefix) {
+  return (prefix || "")
+    .toString()
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function normalizeExerciseVariables(variables) {
+  const list = Array.isArray(variables) ? variables : [];
+  const normalized = [];
+  const seen = new Set();
+
+  list.forEach((variable) => {
+    const prefix = sanitizePrefix(variable?.prefix);
+    if (!prefix) return;
+    if (seen.has(prefix)) return;
+    seen.add(prefix);
+    const sets = Math.max(1, parseInt(variable?.sets, 10) || 1);
+    const reps = Math.max(1, parseInt(variable?.reps, 10) || 1);
+    normalized.push({
+      name: variable?.name?.toString().trim() || prefix,
+      prefix,
+      sets,
+      reps
+    });
+  });
+
+  return normalized;
+}
+
+function applyLegacySetsReps(variables, settings) {
+  const legacySets = parseInt(settings?.sets, 10);
+  const legacyReps = parseInt(settings?.reps, 10);
+  if (!legacySets && !legacyReps) return variables;
+  return variables.map((variable) => {
+    if (variable.prefix !== "PULL") return variable;
+    return {
+      ...variable,
+      sets: legacySets || variable.sets,
+      reps: legacyReps || variable.reps
+    };
+  });
+}
+
+function getExerciseVariables() {
+  const settings = loadSettings();
+  const normalized = normalizeExerciseVariables(settings.exerciseVariables);
+  if (normalized.length) return normalized;
+  const legacyMerged = applyLegacySetsReps(DEFAULT_EXERCISE_VARIABLES, settings);
+  return legacyMerged.length ? legacyMerged : DEFAULT_EXERCISE_VARIABLES;
+}
+
+function saveExerciseVariables(variables) {
+  const settings = loadSettings();
+  const normalized = normalizeExerciseVariables(variables);
+  saveSettings({ ...settings, exerciseVariables: normalized });
+  window.exerciseVariables = normalized.length ? normalized : DEFAULT_EXERCISE_VARIABLES;
+}
+
+function buildExerciseVariableMap(variables) {
+  const map = {};
+  const list = normalizeExerciseVariables(variables);
+  list.forEach((variable) => {
+    map[`${variable.prefix}SETS`] = variable.sets;
+    map[`${variable.prefix}REPS`] = variable.reps;
+  });
+  const legacy = list.find((variable) => variable.prefix === "PULL") || list[0];
+  if (legacy) {
+    map.SETS = legacy.sets;
+    map.REPS = legacy.reps;
+  }
+  return map;
+}
+
 // Platzhalter in Übungstexten ersetzen, inkl. Mathe-Ausdrücke
-function resolveExerciseText(text, sets, reps) {
-  // Ersetze [SETS], [REPS] und Mathe-Ausdrücke wie [REPS-1], [SETS*REPS*2] usw.
+function resolveExerciseText(text, variableMap) {
+  // Ersetze [PREFIXSETS], [PREFIXREPS] und Mathe-Ausdrücke wie [PULLREPS-1], [PULLSETS*2] usw.
   return text.replace(/\[(.*?)\]/g, (match, expr) => {
-    let safeExpr = expr
-      .replace(/SETS/gi, sets)
-      .replace(/REPS/gi, reps);
+    let safeExpr = expr;
+    Object.entries(variableMap || {}).forEach(([key, value]) => {
+      const token = new RegExp(`\\b${key}\\b`, "gi");
+      safeExpr = safeExpr.replace(token, value);
+    });
     try {
       // eslint-disable-next-line no-eval
       let result = eval(safeExpr);
@@ -497,8 +582,7 @@ async function loadWorkouts() {
   // 1. Versuche aus localStorage zu laden
   const localRaw = localStorage.getItem(WORKOUTS_KEY);
   let dataWorkouts = [];
-  let dataSets = 2;
-  let dataReps = 3;
+  let dataExerciseVariables = DEFAULT_EXERCISE_VARIABLES;
 
   if (localRaw) {
     const parsed = JSON.parse(localRaw);
@@ -511,18 +595,18 @@ async function loadWorkouts() {
       if (response.ok) {
         const jsonData = await response.json();
         dataWorkouts = jsonData.workouts || [];
-        dataSets = jsonData.sets;
-        dataReps = jsonData.reps;
+        dataExerciseVariables = jsonData.exerciseVariables || DEFAULT_EXERCISE_VARIABLES;
 
         // Initial speichern
         saveWorkoutsToStorage(dataWorkouts);
         // Settings auch initial speichern, falls noch nicht vorhanden
         const currentSettings = loadSettings();
-        if (!currentSettings.sets) {
+        if (!currentSettings.exerciseVariables) {
           saveSettings({
             ...currentSettings,
-            sets: dataSets,
-            reps: dataReps
+            exerciseVariables: normalizeExerciseVariables(
+              applyLegacySetsReps(dataExerciseVariables, currentSettings)
+            )
           });
         }
       }
@@ -533,8 +617,16 @@ async function loadWorkouts() {
 
   // Globale Settings aktualisieren
   const settings = loadSettings();
-  window.sets = typeof settings.sets === "number" ? settings.sets : dataSets;
-  window.reps = typeof settings.reps === "number" ? settings.reps : dataReps;
+  const exerciseVariables = normalizeExerciseVariables(settings.exerciseVariables);
+  if (exerciseVariables.length) {
+    window.exerciseVariables = exerciseVariables;
+  } else {
+    const fallbackVariables = normalizeExerciseVariables(
+      applyLegacySetsReps(dataExerciseVariables, settings)
+    );
+    window.exerciseVariables = fallbackVariables.length ? fallbackVariables : DEFAULT_EXERCISE_VARIABLES;
+    saveSettings({ ...settings, exerciseVariables: window.exerciseVariables });
+  }
   const fallbackTimerDuration = typeof settings.timerDurationSeconds === "number"
     ? settings.timerDurationSeconds
     : DEFAULT_TIMER_DURATION_SECONDS;
@@ -654,14 +746,6 @@ function deleteWorkout(id) {
 
 // Übersicht rendern
 function renderOverview() {
-  // Inputs updaten
-  const setsInput = $("#setsInput");
-  const repsInput = $("#repsInput");
-  if (setsInput && repsInput) {
-    setsInput.value = window.sets;
-    repsInput.value = window.reps;
-  }
-
   const container = $("#workoutList");
   updateDateNavUI();
   if (!container) return;
@@ -786,9 +870,10 @@ function showActiveWorkout(workout) {
   const list = $("#activeExercises");
   list.innerHTML = "";
 
+  const variableMap = buildExerciseVariableMap(window.exerciseVariables);
   (workout.exercises || []).forEach((text) => {
     const li = document.createElement("li");
-    li.textContent = resolveExerciseText(text, window.sets, window.reps);
+    li.textContent = resolveExerciseText(text, variableMap);
     list.appendChild(li);
   });
   updateExerciseListSizing(list, list.children.length);
@@ -1031,7 +1116,8 @@ function updateModalPreview() {
   }
   // Alle Zeilen verarbeiten
   const lines = text.split("\n");
-  const resolvedLines = lines.map(line => resolveExerciseText(line, window.sets, window.reps));
+  const variableMap = buildExerciseVariableMap(window.exerciseVariables);
+  const resolvedLines = lines.map(line => resolveExerciseText(line, variableMap));
   $("#wfPreview").textContent = resolvedLines.join("\n");
 }
 
@@ -1198,6 +1284,122 @@ function setupCustomInputs() {
   });
 }
 
+function updateExerciseVariablePrefixList() {
+  const listEl = $("#exercisePrefixList");
+  if (!listEl) return;
+  const variables = normalizeExerciseVariables(window.exerciseVariables);
+  if (!variables.length) {
+    listEl.textContent = "Noch keine Prefixes definiert.";
+    return;
+  }
+  const prefixes = variables.map(variable => variable.prefix).join(", ");
+  listEl.textContent = `Verfügbare Prefixes: ${prefixes}`;
+}
+
+function generateUniquePrefix(base, variables) {
+  const upperBase = sanitizePrefix(base || "VAR");
+  const existing = new Set(variables.map(variable => variable.prefix));
+  if (!existing.has(upperBase)) return upperBase;
+  let index = 2;
+  while (existing.has(`${upperBase}${index}`)) {
+    index += 1;
+  }
+  return `${upperBase}${index}`;
+}
+
+function renderExerciseVariablesSettings() {
+  const container = $("#exerciseVariablesList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const variables = normalizeExerciseVariables(window.exerciseVariables);
+
+  variables.forEach((variable, index) => {
+    const row = document.createElement("div");
+    row.className = "exercise-variable-row";
+    row.dataset.index = String(index);
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = variable.name;
+    nameInput.placeholder = "Übung";
+    nameInput.dataset.field = "name";
+
+    const prefixInput = document.createElement("input");
+    prefixInput.type = "text";
+    prefixInput.value = variable.prefix;
+    prefixInput.placeholder = "Prefix";
+    prefixInput.dataset.field = "prefix";
+
+    const setsInput = document.createElement("input");
+    setsInput.type = "number";
+    setsInput.min = "1";
+    setsInput.max = "99";
+    setsInput.value = variable.sets;
+    setsInput.placeholder = "Sets";
+    setsInput.dataset.field = "sets";
+
+    const repsInput = document.createElement("input");
+    repsInput.type = "number";
+    repsInput.min = "1";
+    repsInput.max = "999";
+    repsInput.value = variable.reps;
+    repsInput.placeholder = "Reps";
+    repsInput.dataset.field = "reps";
+
+    const actions = document.createElement("div");
+    actions.className = "exercise-variable-actions";
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn--ghost";
+    removeBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+    removeBtn.setAttribute("aria-label", "Variable löschen");
+    removeBtn.setAttribute("title", "Variable löschen");
+    actions.appendChild(removeBtn);
+
+    [nameInput, prefixInput, setsInput, repsInput].forEach((input) => {
+      input.addEventListener("change", () => {
+        const field = input.dataset.field;
+        const current = normalizeExerciseVariables(window.exerciseVariables);
+        if (!current[index]) return;
+        const updated = [...current];
+        if (field === "name") {
+          updated[index] = { ...updated[index], name: input.value.trim() || updated[index].prefix };
+        }
+        if (field === "prefix") {
+          updated[index] = { ...updated[index], prefix: sanitizePrefix(input.value) };
+        }
+        if (field === "sets") {
+          updated[index] = { ...updated[index], sets: Math.max(1, parseInt(input.value, 10) || 1) };
+        }
+        if (field === "reps") {
+          updated[index] = { ...updated[index], reps: Math.max(1, parseInt(input.value, 10) || 1) };
+        }
+        saveExerciseVariables(updated);
+        renderExerciseVariablesSettings();
+        updateExerciseVariablePrefixList();
+        updateModalPreview();
+      });
+    });
+
+    removeBtn.addEventListener("click", () => {
+      const current = normalizeExerciseVariables(window.exerciseVariables);
+      const updated = current.filter((_, idx) => idx !== index);
+      saveExerciseVariables(updated);
+      renderExerciseVariablesSettings();
+      updateExerciseVariablePrefixList();
+      updateModalPreview();
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(prefixInput);
+    row.appendChild(setsInput);
+    row.appendChild(repsInput);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+}
+
 
 // Event-Handler
 function setupEventListeners() {
@@ -1279,6 +1481,22 @@ function setupEventListeners() {
   if (settingsBackdrop) {
     settingsBackdrop.addEventListener("click", closeSettingsModal);
   }
+
+  const addExerciseVariableBtn = $("#addExerciseVariable");
+  if (addExerciseVariableBtn) {
+    addExerciseVariableBtn.addEventListener("click", () => {
+      const current = normalizeExerciseVariables(window.exerciseVariables);
+      const prefix = generateUniquePrefix("VAR", current);
+      const updated = [
+        ...current,
+        { name: "Neue Übung", prefix, sets: 2, reps: 3 }
+      ];
+      saveExerciseVariables(updated);
+      renderExerciseVariablesSettings();
+      updateExerciseVariablePrefixList();
+      updateModalPreview();
+    });
+  }
 }
 
 // Initialisierung
@@ -1288,28 +1506,9 @@ async function initApp() {
   setupEventListeners();
   setupCustomInputs();
 
-  // Settings-Form Events
-  const setsInput = $("#setsInput");
-  const repsInput = $("#repsInput");
-  const updateSettings = () => {
-    let s = parseInt(setsInput.value, 10);
-    let r = parseInt(repsInput.value, 10);
-    if (isNaN(s) || s < 1) s = 2;
-    if (isNaN(r) || r < 1) r = 3;
-    window.sets = s;
-    window.reps = r;
-    saveSettings({ sets: s, reps: r });
-    renderOverview();
-    // Update Preview if modal is open
-    if (!$("#workoutModal").classList.contains("modal--hidden")) {
-      updateModalPreview();
-    }
-  };
-
-  if (setsInput && repsInput) {
-    setsInput.addEventListener("change", updateSettings);
-    repsInput.addEventListener("change", updateSettings);
-  }
+  window.exerciseVariables = getExerciseVariables();
+  renderExerciseVariablesSettings();
+  updateExerciseVariablePrefixList();
 
   setupReminderTicker();
   updateCurrentTimeDisplay();

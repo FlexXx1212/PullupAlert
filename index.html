@@ -156,10 +156,12 @@
 
             <div class="form-group">
               <label for="wfExercises">Übungen (eine pro Zeile)</label>
-              <textarea id="wfExercises" rows="4" placeholder="Klimmzüge: [SETS] Sets - [REPS] Reps"></textarea>
+              <textarea id="wfExercises" rows="4" placeholder="Klimmzüge: [PULLSETS] Sets - [PULLREPS] Reps"></textarea>
               <p class="hint-small">
-                Platzhalter: <code>[SETS]</code>, <code>[REPS]</code>. Mathe erlaubt: <code>[SETS*2]</code>, <code>[REPS+5]</code>.
+                Platzhalter: <code>[PREFIXSETS]</code>, <code>[PREFIXREPS]</code>. Mathe erlaubt:
+                <code>[PULLSETS*2]</code>, <code>[PULLREPS+5]</code>.
               </p>
+              <p class="hint-small" id="exercisePrefixList"></p>
             </div>
 
             <div class="preview-box">
@@ -199,24 +201,12 @@
         <div class="modal-body">
           <div class="settings-section">
             <h3>Workout Einstellungen</h3>
-            <form id="settingsForm" class="settings-form">
-              <div class="setting-group">
-                <label for="setsInput">Max. Sets:</label>
-                <div class="number-control">
-                  <button type="button" class="btn-control" data-action="dec" data-target="setsInput">-</button>
-                  <input type="number" id="setsInput" min="1" max="99" readonly />
-                  <button type="button" class="btn-control" data-action="inc" data-target="setsInput">+</button>
-                </div>
-              </div>
-              <div class="setting-group">
-                <label for="repsInput">Max. Reps:</label>
-                <div class="number-control">
-                  <button type="button" class="btn-control" data-action="dec" data-target="repsInput">-</button>
-                  <input type="number" id="repsInput" min="1" max="99" readonly />
-                  <button type="button" class="btn-control" data-action="inc" data-target="repsInput">+</button>
-                </div>
-              </div>
-            </form>
+            <p class="hint-small">
+              Definiere eigene Variablen pro Übung. Daraus entstehen automatisch <code>[PREFIXSETS]</code> und
+              <code>[PREFIXREPS]</code>.
+            </p>
+            <div id="exerciseVariablesList" class="exercise-variables"></div>
+            <button type="button" id="addExerciseVariable" class="btn btn--ghost btn--small">+ Variable hinzufügen</button>
           </div>
 
           <div class="settings-section">
