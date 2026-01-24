@@ -470,15 +470,8 @@ function renderWorkoutTimers(workout) {
     time.className = "workout-timer-time";
     time.textContent = `${state.remaining}s`;
 
-    const action = document.createElement("div");
-    action.className = "workout-timer-action";
-    const icon = document.createElement("i");
-    icon.className = `fas ${state.isRunning ? "fa-stop" : "fa-play"}`;
-    action.appendChild(icon);
-
     card.appendChild(header);
     card.appendChild(time);
-    card.appendChild(action);
 
     card.addEventListener("click", () => {
       if (!allowTimerControls) return;

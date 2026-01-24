@@ -500,9 +500,12 @@ body {
   display: flex;
   gap: 24px;
   align-items: flex-start;
+  min-height: -webkit-fill-available;
+  margin: 0 0 5% 0;
 }
 
 .active-container {
+  min-height: -webkit-fill-available;
   flex: 1;
   border-radius: var(--radius-xl);
   background: radial-gradient(circle at top, #171c29 0, #0d1019 55%);
@@ -599,7 +602,7 @@ body {
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
-  width: min(260px, 32vw);
+  width: min(200px, 32vw);
   flex-shrink: 0;
 }
 
@@ -612,7 +615,6 @@ body {
 
 .workout-timer {
   width: 100%;
-  display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
   align-items: center;
@@ -809,6 +811,10 @@ body {
   padding: 8px 10px;
   color: var(--text);
   font-size: 0.9rem;
+}
+
+.timer-seconds-input {
+  max-width: 60px;
 }
 
 .timer-seconds-label {
