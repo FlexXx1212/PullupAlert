@@ -84,18 +84,18 @@
         ← Zur Übersicht
       </button>
 
-      <div class="active-container">
-        <div class="active-header">
-          <h2 id="activeTitle" class="active-title"></h2>
-          <p id="activeLabel" class="active-label"></p>
-          <p id="activeTime" class="active-time"></p>
-          <p id="activeDate" class="active-date"></p>
-          <p id="activeGrip" class="active-grip"></p>
+      <div class="active-layout">
+        <div class="timer-section" aria-label="Workout Timer">
+          <div id="workoutTimers" class="workout-timers"></div>
         </div>
 
-        <div class="active-main">
-          <div class="timer-section" aria-label="Workout Timer">
-            <div id="workoutTimers" class="workout-timers"></div>
+        <div class="active-container">
+          <div class="active-header">
+            <h2 id="activeTitle" class="active-title"></h2>
+            <p id="activeLabel" class="active-label"></p>
+            <p id="activeTime" class="active-time"></p>
+            <p id="activeDate" class="active-date"></p>
+            <p id="activeGrip" class="active-grip"></p>
           </div>
 
           <div class="active-body">
@@ -103,12 +103,12 @@
               <!-- Übungen per JS -->
             </ul>
           </div>
-        </div>
 
-        <div class="active-footer">
-          <button id="completeButton" class="btn btn--primary">
-            Workout abschließen
-          </button>
+          <div class="active-footer">
+            <button id="completeButton" class="btn btn--primary">
+              Workout abschließen
+            </button>
+          </div>
         </div>
       </div>
     </section>

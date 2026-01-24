@@ -496,6 +496,12 @@ body {
   margin-bottom: 10px;
 }
 
+.active-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
 .active-container {
   flex: 1;
   border-radius: var(--radius-xl);
@@ -505,12 +511,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.active-main {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
 }
 
 .active-header {
@@ -599,7 +599,8 @@ body {
   flex-direction: column;
   gap: 12px;
   align-items: flex-start;
-  width: min(260px, 40%);
+  width: min(260px, 32vw);
+  flex-shrink: 0;
 }
 
 .workout-timers {
@@ -935,7 +936,7 @@ body {
     align-items: stretch;
   }
 
-  .active-main {
+  .active-layout {
     flex-direction: column;
   }
 
