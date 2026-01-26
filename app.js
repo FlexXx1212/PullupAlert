@@ -922,6 +922,9 @@ function markCurrentWorkoutCompleted() {
     currentWorkout.completed = true;
   }
   setWorkoutCompleted(currentWorkout.id, true, activeDate);
+  if (standUpSettings.resetOnWorkoutComplete) {
+    resetStandUpTimer();
+  }
   stopActiveTimer({ reset: true });
   allowTimerControls = false;
   stopTitleBlink();
@@ -1533,7 +1536,8 @@ let standUpSettings = {
   minTime: 45,
   maxTime: 75,
   minDur: 10,
-  maxDur: 20
+  maxDur: 20,
+  resetOnWorkoutComplete: false
 };
 
 let standUpState = {
@@ -1589,6 +1593,7 @@ function initStandUpLogic() {
   const minDurIn = $("#suMinDur");
   const maxDurIn = $("#suMaxDur");
   const resetBtn = $("#standUpReset");
+  const resetOnWorkoutToggle = $("#suResetOnWorkout");
 
   if (toggle) {
     toggle.checked = standUpSettings.enabled;
@@ -1602,6 +1607,14 @@ function initStandUpLogic() {
   if (resetBtn) {
     resetBtn.addEventListener("click", resetStandUpTimer);
     resetBtn.disabled = !standUpSettings.enabled;
+  }
+
+  if (resetOnWorkoutToggle) {
+    resetOnWorkoutToggle.checked = Boolean(standUpSettings.resetOnWorkoutComplete);
+    resetOnWorkoutToggle.addEventListener("change", (e) => {
+      standUpSettings.resetOnWorkoutComplete = e.target.checked;
+      saveStandUpSettings();
+    });
   }
 
   // Inputs
