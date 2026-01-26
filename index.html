@@ -200,16 +200,6 @@
         </div>
         <div class="modal-body">
           <div class="settings-section">
-            <h3>Workout Einstellungen</h3>
-            <p class="hint-small">
-              Definiere eigene Variablen pro Übung. Daraus entstehen automatisch <code>[PREFIXSETS]</code> und
-              <code>[PREFIXREPS]</code>.
-            </p>
-            <div id="exerciseVariablesList" class="exercise-variables"></div>
-            <button type="button" id="addExerciseVariable" class="btn btn--ghost btn--small">+ Variable hinzufügen</button>
-          </div>
-
-          <div class="settings-section">
             <div class="standup-header">
               <h3>Stand Up Alert</h3>
               <label class="switch">
@@ -234,7 +224,26 @@
                   <input type="number" id="suMaxDur" value="20" min="1">
                 </div>
               </div>
+              <div class="setting-group">
+                <div class="standup-header">
+                  <label for="suResetOnWorkout">Workout abschluss resetted Stand Up Alert:</label>
+                  <label class="switch standup-switch">
+                    <input type="checkbox" id="suResetOnWorkout">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Workout Einstellungen</h3>
+            <p class="hint-small">
+              Definiere eigene Variablen pro Übung. Daraus entstehen automatisch <code>[PREFIXSETS]</code> und
+              <code>[PREFIXREPS]</code>.
+            </p>
+            <div id="exerciseVariablesList" class="exercise-variables"></div>
+            <button type="button" id="addExerciseVariable" class="btn btn--ghost btn--small">+ Variable hinzufügen</button>
           </div>
         </div>
       </div>
