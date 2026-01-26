@@ -1187,6 +1187,10 @@ body {
   height: 26px;
 }
 
+.standup-switch {
+  margin-left: 20px;
+}
+
 .switch input {
   opacity: 0;
   width: 0;
