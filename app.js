@@ -140,9 +140,9 @@ const WEEKDAY_MAP = {
   Fr: 5,
   Sa: 6,
 };
-const ALL_WEEKDAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const ALL_WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 // Mapping Index -> Kürzel für UI
-const INDEX_TO_WEEKDAY = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const INDEX_TO_WEEKDAY = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
 let workouts = [];
 let currentWorkout = null;
@@ -972,21 +972,6 @@ function setupReminderTicker() {
 }
 
 function triggerWorkoutAlert(workout, isReminder) {
-  const activeView = document.getElementById("activeView");
-  const isActiveViewVisible = activeView?.classList.contains("view--active");
-  const hasActiveUnfinishedWorkout =
-    currentWorkout &&
-    !isWorkoutCompleted(currentWorkout.id, activeDate) &&
-    isActiveViewVisible;
-
-  const isSameWorkout = currentWorkout && currentWorkout.id === workout.id;
-
-  // Wenn bereits ein anderes Workout geöffnet und noch nicht abgeschlossen ist,
-  // soll die Ansicht nicht automatisch gewechselt werden.
-  if (!hasActiveUnfinishedWorkout || isSameWorkout) {
-    showActiveWorkout(workout);
-  }
-
   playAlertSound();
   startTitleBlink();
   sendWorkoutNotification(workout, isReminder);
