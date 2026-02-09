@@ -10,6 +10,47 @@ const DEFAULT_EXERCISE_VARIABLES = [
   { name: "Lateral Raises", prefix: "LAT", sets: 2, reps: 30 }
 ];
 
+function createCategoryId() {
+  return `cat_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function normalizeCategories(categories) {
+  const list = Array.isArray(categories) ? categories : [];
+  const normalized = [];
+  const seen = new Set();
+
+  list.forEach((category) => {
+    const name = category?.name?.toString().trim();
+    if (!name) return;
+    let id = category?.id?.toString().trim() || createCategoryId();
+    while (seen.has(id)) {
+      id = createCategoryId();
+    }
+    seen.add(id);
+    normalized.push({
+      id,
+      name,
+      hidden: Boolean(category?.hidden)
+    });
+  });
+
+  return normalized;
+}
+
+function getCategoryById(categoryId) {
+  return (window.categories || []).find((category) => category.id === categoryId) || null;
+}
+
+function getCategoryName(categoryId) {
+  if (!categoryId) return "";
+  return getCategoryById(categoryId)?.name || "";
+}
+
+function isCategoryHidden(categoryId) {
+  if (!categoryId) return false;
+  return Boolean(getCategoryById(categoryId)?.hidden);
+}
+
 // Settings laden/speichern
 function loadSettings() {
   try {
@@ -618,6 +659,41 @@ async function loadWorkouts() {
   // Globale Settings aktualisieren
   const settings = loadSettings();
   const exerciseVariables = normalizeExerciseVariables(settings.exerciseVariables);
+  let categories = normalizeCategories(settings.categories);
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const categoriesByName = new Map(categories.map((category) => [category.name.toLowerCase(), category]));
+  let categoriesChanged = false;
+  let workoutsChanged = false;
+  dataWorkouts.forEach((workout) => {
+    if (workout.categoryId) return;
+    const legacyLabel = workout?.label?.toString().trim();
+    if (!legacyLabel) return;
+    const key = legacyLabel.toLowerCase();
+    let category = categoriesByName.get(key);
+    if (!category) {
+      category = { id: createCategoryId(), name: legacyLabel, hidden: false };
+      categories.push(category);
+      categoriesById.set(category.id, category);
+      categoriesByName.set(key, category);
+      categoriesChanged = true;
+    }
+    workout.categoryId = category.id;
+    workoutsChanged = true;
+  });
+  dataWorkouts.forEach((workout) => {
+    if (!workout.categoryId) return;
+    if (!categoriesById.has(workout.categoryId)) {
+      workout.categoryId = "";
+      workoutsChanged = true;
+    }
+  });
+  if (categoriesChanged) {
+    saveSettings({ ...settings, categories });
+  }
+  if (workoutsChanged) {
+    saveWorkoutsToStorage(dataWorkouts);
+  }
+  window.categories = categories;
   if (exerciseVariables.length) {
     window.exerciseVariables = exerciseVariables;
   } else {
@@ -663,7 +739,7 @@ function saveWorkoutsToStorage(workoutsData) {
     id: w.id,
     time: w.time,
     title: w.title,
-    label: w.label,
+    categoryId: w.categoryId || "",
     grip: w.grip,
     days: w.days,
     exercises: w.exercises,
@@ -757,6 +833,7 @@ function renderOverview() {
   const isPastView = activeDate < startOfDay(new Date());
 
   workouts.forEach((workout) => {
+    if (isCategoryHidden(workout.categoryId)) return;
     const isOnSelectedDay = isWorkoutOnDate(workout, activeDate);
     const isCompleted = Boolean(completions?.[activeDateKey]?.[workout.id]);
     const scheduledDateTime = parseTimeToDate(workout.time, activeDate);
@@ -785,7 +862,7 @@ function renderOverview() {
     timeEl.textContent = workout.time;
     const labelEl = document.createElement("div");
     labelEl.className = "workout-label";
-    labelEl.textContent = workout.label || "";
+    labelEl.textContent = getCategoryName(workout.categoryId);
     header.appendChild(timeEl);
     header.appendChild(labelEl);
 
@@ -851,7 +928,7 @@ function showActiveWorkout(workout) {
   stopActiveTimer({ reset: true });
   currentWorkout = workout;
   $("#activeTitle").textContent = workout.title;
-  $("#activeLabel").textContent = workout.label || "";
+  $("#activeLabel").textContent = getCategoryName(workout.categoryId);
   $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
   const activeDateLabel = $("#activeDate");
   if (activeDateLabel) {
@@ -951,6 +1028,7 @@ function setupReminderTicker() {
         w.isToday = w.daysIndex.includes(todayDayIndex);
         needsRerender = true;
       }
+      if (isCategoryHidden(w.categoryId)) return;
       if (w.completed) return;
       if (!w.isToday) return;
       if (!w.dateTime) return;
@@ -1004,6 +1082,27 @@ function toggleCompletionButtonState() {
   setToggleCompletionButtonState(nextState);
 }
 
+function renderCategoryOptions(selectedId = "") {
+  const select = $("#wfCategory");
+  if (!select) return;
+  select.innerHTML = "";
+
+  const emptyOption = document.createElement("option");
+  emptyOption.value = "";
+  emptyOption.textContent = "Keine Kategorie";
+  select.appendChild(emptyOption);
+
+  const categories = normalizeCategories(window.categories);
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category.id;
+    option.textContent = category.name;
+    select.appendChild(option);
+  });
+
+  select.value = selectedId || "";
+}
+
 function openModal(workout = null) {
   const modal = $("#workoutModal");
   const form = $("#workoutForm");
@@ -1035,12 +1134,13 @@ function openModal(workout = null) {
     daysContainer.appendChild(label);
   });
 
+  renderCategoryOptions(workout?.categoryId || "");
+
   if (workout) {
     // Edit Mode
     title.textContent = "Workout bearbeiten";
     $("#editWorkoutId").value = workout.id;
     $("#wfTitle").value = workout.title;
-    $("#wfLabel").value = workout.label || "";
     $("#wfTime").value = workout.time;
     $("#wfGrip").value = (workout.grip && workout.grip !== "-") ? workout.grip : "";
     $("#wfExercises").value = (workout.exercises || []).join("\n");
@@ -1192,7 +1292,7 @@ function handleModalSubmit(e) {
   e.preventDefault();
   const id = $("#editWorkoutId").value;
   const title = $("#wfTitle").value;
-  const label = $("#wfLabel").value;
+  const categoryId = $("#wfCategory").value;
   const time = $("#wfTime").value;
   const grip = $("#wfGrip").value.trim(); // Empty string if not provided
   const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
@@ -1221,7 +1321,7 @@ function handleModalSubmit(e) {
 
   const data = {
     title,
-    label,
+    categoryId,
     time,
     grip,
     days: selectedDays,
@@ -1388,6 +1488,116 @@ function renderExerciseVariablesSettings() {
   });
 }
 
+function saveCategories(categories) {
+  const settings = loadSettings();
+  const normalized = normalizeCategories(categories);
+  saveSettings({ ...settings, categories: normalized });
+  window.categories = normalized;
+}
+
+function updateWorkoutsForCategoryRemoval(categoryId) {
+  let updated = false;
+  workouts = workouts.map((workout) => {
+    if (workout.categoryId !== categoryId) return workout;
+    updated = true;
+    return { ...workout, categoryId: "" };
+  });
+  if (updated) {
+    saveWorkoutsToStorage(workouts);
+    renderOverview();
+  }
+  if (currentWorkout?.categoryId === categoryId) {
+    currentWorkout = { ...currentWorkout, categoryId: "" };
+  }
+}
+
+function renderCategorySettings() {
+  const container = $("#categorySettingsList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const categories = normalizeCategories(window.categories);
+  if (!categories.length) {
+    const empty = document.createElement("p");
+    empty.className = "hint-small";
+    empty.textContent = "Noch keine Kategorien angelegt.";
+    container.appendChild(empty);
+    return;
+  }
+
+  categories.forEach((category) => {
+    const row = document.createElement("div");
+    row.className = "category-row";
+    row.dataset.id = category.id;
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = category.name;
+    nameInput.placeholder = "Kategorie";
+
+    const toggleWrap = document.createElement("div");
+    toggleWrap.className = "category-toggle";
+    const toggleLabel = document.createElement("span");
+    toggleLabel.textContent = "Ausblenden";
+    const toggle = document.createElement("label");
+    toggle.className = "switch";
+    const toggleInput = document.createElement("input");
+    toggleInput.type = "checkbox";
+    toggleInput.checked = category.hidden;
+    const slider = document.createElement("span");
+    slider.className = "slider round";
+    toggle.appendChild(toggleInput);
+    toggle.appendChild(slider);
+    toggleWrap.appendChild(toggleLabel);
+    toggleWrap.appendChild(toggle);
+
+    const actions = document.createElement("div");
+    actions.className = "category-actions";
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "btn btn--ghost";
+    removeBtn.innerHTML = '<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+    removeBtn.setAttribute("aria-label", "Kategorie löschen");
+    removeBtn.setAttribute("title", "Kategorie löschen");
+    actions.appendChild(removeBtn);
+
+    nameInput.addEventListener("change", () => {
+      const updated = normalizeCategories(window.categories).map((item) => {
+        if (item.id !== category.id) return item;
+        return { ...item, name: nameInput.value.trim() || item.name };
+      });
+      saveCategories(updated);
+      renderCategorySettings();
+      renderCategoryOptions(category.id);
+      renderOverview();
+    });
+
+    toggleInput.addEventListener("change", () => {
+      const updated = normalizeCategories(window.categories).map((item) => {
+        if (item.id !== category.id) return item;
+        return { ...item, hidden: toggleInput.checked };
+      });
+      saveCategories(updated);
+      renderOverview();
+    });
+
+    removeBtn.addEventListener("click", () => {
+      if (!confirm("Kategorie wirklich löschen?")) return;
+      const updated = normalizeCategories(window.categories).filter((item) => item.id !== category.id);
+      saveCategories(updated);
+      updateWorkoutsForCategoryRemoval(category.id);
+      renderCategorySettings();
+      renderCategoryOptions();
+      renderOverview();
+    });
+
+    row.appendChild(nameInput);
+    row.appendChild(toggleWrap);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+}
+
 
 // Event-Handler
 function setupEventListeners() {
@@ -1485,6 +1695,23 @@ function setupEventListeners() {
       updateModalPreview();
     });
   }
+
+  const addCategoryBtn = $("#addCategoryBtn");
+  if (addCategoryBtn) {
+    addCategoryBtn.addEventListener("click", () => {
+      const current = normalizeCategories(window.categories);
+      const newCategory = {
+        id: createCategoryId(),
+        name: "Neue Kategorie",
+        hidden: false
+      };
+      const updated = [...current, newCategory];
+      saveCategories(updated);
+      renderCategorySettings();
+      renderCategoryOptions(newCategory.id);
+      renderOverview();
+    });
+  }
 }
 
 // Initialisierung
@@ -1497,6 +1724,7 @@ async function initApp() {
   window.exerciseVariables = getExerciseVariables();
   renderExerciseVariablesSettings();
   updateExerciseVariablePrefixList();
+  renderCategorySettings();
 
   setupReminderTicker();
   updateCurrentTimeDisplay();

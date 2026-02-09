@@ -131,8 +131,8 @@
                 <input type="text" id="wfTitle" required placeholder="z.B. Rücken & Bizeps" />
               </div>
               <div class="form-group">
-                <label for="wfLabel">Label (optional)</label>
-                <input type="text" id="wfLabel" placeholder="z.B. Morgens" />
+                <label for="wfCategory">Kategorie (optional)</label>
+                <select id="wfCategory"></select>
               </div>
             </div>
 
@@ -199,6 +199,15 @@
           <button id="closeSettingsBtn" class="btn-icon" aria-label="Schließen">×</button>
         </div>
         <div class="modal-body">
+          <div class="settings-section">
+            <h3>Allgemeine Einstellungen</h3>
+            <p class="hint-small">
+              Kategorien können optional bei Workouts ausgewählt werden. Über den Schalter kannst du Kategorien
+              aus der Übersicht ausblenden und Erinnerungen deaktivieren.
+            </p>
+            <div id="categorySettingsList" class="categories-list"></div>
+            <button type="button" id="addCategoryBtn" class="btn btn--ghost btn--small">+ Kategorie hinzufügen</button>
+          </div>
           <div class="settings-section">
             <div class="standup-header">
               <h3>Stand Up Alert</h3>
