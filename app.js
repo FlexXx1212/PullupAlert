@@ -169,6 +169,56 @@ function resolveExerciseText(text, variableMap) {
   });
 }
 
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  }[char]));
+}
+
+function applyInlineFormatting(text) {
+  const escaped = escapeHtml(text);
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/__(.+?)__/g, "<u>$1</u>");
+}
+
+function parseExerciseLine(text, variableMap) {
+  const resolved = resolveExerciseText(text, variableMap).trim();
+  if (!resolved) return null;
+  let type = "normal";
+  let content = resolved;
+  if (content.startsWith("# ")) {
+    type = "heading";
+    content = content.slice(2).trim();
+  } else if (content.startsWith("- ")) {
+    type = "bullet";
+    content = content.slice(2).trim();
+  }
+  return {
+    type,
+    html: applyInlineFormatting(content)
+  };
+}
+
+function createExerciseLineElement(text, variableMap, tagName = "li") {
+  const parsed = parseExerciseLine(text, variableMap);
+  if (!parsed) return null;
+  const item = document.createElement(tagName);
+  item.className = "exercise-item";
+  if (parsed.type === "bullet") {
+    item.classList.add("exercise-item--bullet");
+  }
+  if (parsed.type === "heading") {
+    item.classList.add("exercise-item--heading");
+  }
+  item.innerHTML = parsed.html;
+  return item;
+}
+
 // Pullup Alert – SPA-Logik
 // - Workouts & Zeiten werden jetzt primär aus localStorage geladen
 // - Abschluss-Status wird pro Tag in localStorage gespeichert
@@ -796,7 +846,6 @@ function saveWorkoutsToStorage(workoutsData) {
     time: w.time,
     title: w.title,
     categoryId: w.categoryId || "",
-    grip: w.grip,
     days: w.days,
     exercises: w.exercises,
     timers: w.timers,
@@ -1037,22 +1086,13 @@ function showActiveWorkout(workout) {
     activeDateLabel.classList.toggle("active-date--off", !isViewingToday());
   }
 
-  const gripEl = $("#activeGrip");
-  if (workout.grip && workout.grip !== "-") {
-    gripEl.textContent = `Griff: ${workout.grip}`;
-    gripEl.style.display = "";
-  } else {
-    gripEl.style.display = "none";
-  }
-
   const list = $("#activeExercises");
   list.innerHTML = "";
 
   const variableMap = buildExerciseVariableMap(window.exerciseVariables);
   (workout.exercises || []).forEach((text) => {
-    const li = document.createElement("li");
-    li.textContent = resolveExerciseText(text, variableMap);
-    list.appendChild(li);
+    const item = createExerciseLineElement(text, variableMap, "li");
+    if (item) list.appendChild(item);
   });
   updateExerciseListSizing(list, list.children.length);
 
@@ -1289,7 +1329,6 @@ function openModal(workout = null) {
     $("#editWorkoutId").value = workout.id;
     $("#wfTitle").value = workout.title;
     $("#wfTime").value = workout.time;
-    $("#wfGrip").value = (workout.grip && workout.grip !== "-") ? workout.grip : "";
     $("#wfExercises").value = (workout.exercises || []).join("\n");
     renderTimerEditor(workout.timers || []);
     repeatToggle.checked = Boolean(workout.repeating);
@@ -1373,15 +1412,20 @@ function closeSettingsModal() {
 
 function updateModalPreview() {
   const text = $("#wfExercises").value;
+  const preview = $("#wfPreview");
   if (!text.trim()) {
-    $("#wfPreview").textContent = "-";
+    preview.textContent = "-";
+    preview.classList.add("preview-empty");
     return;
   }
-  // Alle Zeilen verarbeiten
+  preview.innerHTML = "";
+  preview.classList.remove("preview-empty");
   const lines = text.split("\n");
   const variableMap = buildExerciseVariableMap(window.exerciseVariables);
-  const resolvedLines = lines.map(line => resolveExerciseText(line, variableMap));
-  $("#wfPreview").textContent = resolvedLines.join("\n");
+  lines.forEach((line) => {
+    const item = createExerciseLineElement(line, variableMap, "div");
+    if (item) preview.appendChild(item);
+  });
 }
 
 function createTimerEditorRow(timer, container) {
@@ -1472,7 +1516,6 @@ function handleModalSubmit(e) {
   const repeating = Boolean($("#wfRepeating").checked);
   const repeatMinutesInput = $("#wfRepeatMinutes").value;
   const repeatIntervalMinutes = normalizeRepeatInterval(repeatMinutesInput);
-  const grip = $("#wfGrip").value.trim(); // Empty string if not provided
   const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
   const timerRows = Array.from(document.querySelectorAll("#wfTimersContainer .timer-row"));
   const timers = timerRows.map((row, index) => {
@@ -1501,7 +1544,6 @@ function handleModalSubmit(e) {
     title,
     categoryId,
     time: repeating ? (time || "00:00") : time,
-    grip,
     repeating,
     repeatIntervalMinutes,
     days: selectedDays,
