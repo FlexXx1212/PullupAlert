@@ -131,8 +131,8 @@
                 <input type="text" id="wfTitle" required placeholder="z.B. Rücken & Bizeps" />
               </div>
               <div class="form-group">
-                <label for="wfLabel">Label (optional)</label>
-                <input type="text" id="wfLabel" placeholder="z.B. Morgens" />
+                <label for="wfCategory">Kategorie</label>
+                <select id="wfCategory"></select>
               </div>
             </div>
 
@@ -236,6 +236,15 @@
             </div>
           </div>
 
+          <div class="settings-section">
+            <h3>Allgemeine Einstellungen</h3>
+            <p class="hint-small">
+              Kategorien können optional bei Workouts ausgewählt werden. Aktive Kategorien erscheinen in der Übersicht
+              und lösen Erinnerungen aus.
+            </p>
+            <div id="categorySettingsList" class="categories-list"></div>
+            <button type="button" id="addCategoryBtn" class="btn btn--ghost btn--small">+ Kategorie hinzufügen</button>
+          </div>
           <div class="settings-section">
             <h3>Workout Einstellungen</h3>
             <p class="hint-small">
