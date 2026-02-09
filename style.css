@@ -288,6 +288,30 @@ body {
 
 /* Overview */
 
+#overviewView {
+  scrollbar-color: rgba(63, 208, 255, 0.6) rgba(15, 23, 36, 0.7);
+  scrollbar-width: thin;
+}
+
+#overviewView::-webkit-scrollbar {
+  width: 10px;
+}
+
+#overviewView::-webkit-scrollbar-track {
+  background: rgba(15, 23, 36, 0.7);
+  border-radius: 999px;
+}
+
+#overviewView::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3fd0ff, #0099ff);
+  border-radius: 999px;
+  border: 2px solid rgba(15, 23, 36, 0.7);
+}
+
+#overviewView::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #63ddff, #1aa7ff);
+}
+
 .overview-header {
   display: flex;
   justify-content: space-between;
