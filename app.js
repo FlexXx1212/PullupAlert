@@ -1297,6 +1297,8 @@ function openModal(workout = null) {
   const repeatToggle = $("#wfRepeating");
   const repeatMinutesInput = $("#wfRepeatMinutes");
   const timeInput = $("#wfTime");
+  const timeGroup = $("#wfTimeGroup");
+  const repeatGroup = $("#wfRepeatGroup");
 
   // Reset Form
   form.reset();
@@ -1371,14 +1373,16 @@ function openModal(workout = null) {
   function updateRepeatFields() {
     const isRepeating = repeatToggle?.checked;
     if (timeInput) {
-      timeInput.disabled = Boolean(isRepeating);
       timeInput.required = !isRepeating;
-      if (isRepeating && !timeInput.value) {
-        timeInput.value = "00:00";
-      }
     }
     if (repeatMinutesInput) {
-      repeatMinutesInput.disabled = !isRepeating;
+      repeatMinutesInput.required = Boolean(isRepeating);
+    }
+    if (timeGroup) {
+      timeGroup.classList.toggle("is-hidden", Boolean(isRepeating));
+    }
+    if (repeatGroup) {
+      repeatGroup.classList.toggle("is-hidden", !isRepeating);
     }
     if (toggleBtn) {
       toggleBtn.style.display = isRepeating ? "none" : "inline-flex";
