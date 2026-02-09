@@ -222,7 +222,6 @@ function requestNotificationPermission() {
 function sendWorkoutNotification(workout, isReminder) {
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
-  if (document.visibilityState == "visible") return;
   const title = isReminder ? "Workout Erinnerung" : "Workout jetzt starten";
   const body = workout.title;
   try {
