@@ -902,20 +902,20 @@ body {
 }
 
 .form-row--repeat .repeat-right {
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .form-row--repeat .repeat-switch {
   display: grid;
-  grid-template-rows: auto 1fr;
-  align-items: flex-start;
+  grid-template-rows: auto 42px;
+  align-items: start;
   justify-content: flex-start;
   gap: 6px;
-  height: 100%;
 }
 
 .form-row--repeat .repeat-switch .switch {
   align-self: center;
+  margin-top: 15%;
 }
 
 .form-group {
