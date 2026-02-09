@@ -643,13 +643,6 @@ body {
   color: var(--accent);
 }
 
-.active-grip {
-  margin: 0 0 0;
-  font-size: clamp(1.5rem, 3vw, 2.5rem);
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
 .active-body {
   flex: 1;
   display: flex;
@@ -669,17 +662,34 @@ body {
 
 .exercise-list li {
   margin-bottom: 14px;
-  padding-left: 18px;
+  padding-left: 0;
   position: relative;
 }
 
-.exercise-list li::before {
+.exercise-item--bullet {
+  padding-left: 18px;
+}
+
+.exercise-item--bullet::before {
   content: "•";
   position: absolute;
   left: 0;
   top: 0;
   transform: translateY(2px);
   color: var(--accent);
+}
+
+.exercise-item--heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.exercise-item strong {
+  font-weight: 700;
+}
+
+.exercise-item u {
+  text-decoration: underline;
 }
 
 /* Timer & Footer */
@@ -1033,9 +1043,38 @@ body {
 }
 
 .preview-content {
-  color: var(--accent);
+  color: var(--text);
   font-weight: 500;
-  white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preview-content.preview-empty {
+  color: var(--accent);
+}
+
+.preview-content .exercise-item {
+  position: relative;
+  padding-left: 0;
+}
+
+.preview-content .exercise-item--bullet {
+  padding-left: 18px;
+}
+
+.preview-content .exercise-item--bullet::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(2px);
+  color: var(--accent);
+}
+
+.preview-content .exercise-item--heading {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .modal-actions {
