@@ -176,6 +176,7 @@ function resolveExerciseText(text, variableMap) {
 const BASE_TITLE = "Pullup Alert";
 const REMINDER_INTERVAL_MINUTES = 30;
 const DEFAULT_TIMER_DURATION_SECONDS = 75;
+const DEFAULT_REPEAT_INTERVAL_MINUTES = 90;
 const STORAGE_KEY = "pullup-alert-completions";
 
 // Wochentag-Mapping (Deutsch → Date.getDay Index)
@@ -271,6 +272,36 @@ function parseTimeToDate(timeStr, baseDate = new Date()) {
     0,
     0
   );
+}
+
+function normalizeRepeatInterval(minutes) {
+  const parsed = parseInt(minutes, 10);
+  if (Number.isNaN(parsed)) return DEFAULT_REPEAT_INTERVAL_MINUTES;
+  return Math.min(Math.max(parsed, 1), 1440);
+}
+
+function isRepeatingWorkout(workout) {
+  return Boolean(workout?.repeating);
+}
+
+function getRepeatMinutes(workout) {
+  if (!workout) return DEFAULT_REPEAT_INTERVAL_MINUTES;
+  return normalizeRepeatInterval(workout.repeatIntervalMinutes);
+}
+
+function formatTimeShort(date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function getRepeatingDueLabel(workout) {
+  if (!isRepeatingWorkout(workout)) return "";
+  const nextDueAt = workout?.nextDueAt instanceof Date ? workout.nextDueAt : null;
+  if (!nextDueAt) return "";
+  const diffMinutes = Math.max(0, Math.ceil((nextDueAt.getTime() - Date.now()) / 60000));
+  return `${formatTimeShort(nextDueAt)} (${diffMinutes} Min)`;
 }
 
 function loadCompletions() {
@@ -719,13 +750,19 @@ async function loadWorkouts() {
   const todayDayIndex = today.getDay();
 
   workouts = dataWorkouts.map((w) => {
-    const dateTime = parseTimeToDate(w.time, today);
+    const repeating = Boolean(w.repeating);
+    const repeatIntervalMinutes = normalizeRepeatInterval(w.repeatIntervalMinutes);
+    const nextDueAt = w.nextDueAt ? new Date(w.nextDueAt) : null;
+    const dateTime = repeating ? nextDueAt : parseTimeToDate(w.time, today);
     let daysArr = Array.isArray(w.days) && w.days.length > 0 ? w.days : ALL_WEEKDAYS;
     const daysIndex = daysArr.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
     const isToday = daysIndex.includes(todayDayIndex);
 
     return {
       ...w,
+      repeating,
+      repeatIntervalMinutes,
+      nextDueAt,
       timers: normalizeWorkoutTimers(w.timers, fallbackTimerDuration),
       dateTime,
       days: daysArr,
@@ -733,10 +770,23 @@ async function loadWorkouts() {
       isToday,
       alertedInitially: false,
       nextReminderAt: null,
-      completed: isWorkoutCompleted(w.id, today),
+      completed: repeating ? false : isWorkoutCompleted(w.id, today),
       lastDayKey: todayKey,
     };
   });
+
+  let repeatingUpdated = false;
+  workouts.forEach((workout) => {
+    if (!isRepeatingWorkout(workout) || !workout.isToday) return;
+    if (!workout.nextDueAt || workout.nextDueAt < startOfDay(today)) {
+      workout.nextDueAt = new Date();
+      workout.dateTime = workout.nextDueAt;
+      repeatingUpdated = true;
+    }
+  });
+  if (repeatingUpdated) {
+    saveWorkoutsToStorage(workouts);
+  }
 }
 
 function saveWorkoutsToStorage(workoutsData) {
@@ -749,7 +799,10 @@ function saveWorkoutsToStorage(workoutsData) {
     grip: w.grip,
     days: w.days,
     exercises: w.exercises,
-    timers: w.timers
+    timers: w.timers,
+    repeating: Boolean(w.repeating),
+    repeatIntervalMinutes: normalizeRepeatInterval(w.repeatIntervalMinutes),
+    nextDueAt: w.nextDueAt instanceof Date ? w.nextDueAt.getTime() : (w.nextDueAt ?? null)
   }));
   localStorage.setItem(WORKOUTS_KEY, JSON.stringify({ workouts: cleanWorkouts }));
 }
@@ -761,37 +814,43 @@ function addWorkout(workoutData) {
   const newWorkout = {
     ...workoutData,
     id: newId,
+    repeating: Boolean(workoutData.repeating),
+    repeatIntervalMinutes: normalizeRepeatInterval(workoutData.repeatIntervalMinutes),
     timers: normalizeWorkoutTimers(workoutData.timers, getFallbackTimerDuration())
   };
   // Zu lokaler Liste hinzufügen (mit Laufzeit-Props)
   const today = new Date();
   const todayKey = getDateKey(today);
   const todayDayIndex = today.getDay();
-  const dateTime = parseTimeToDate(newWorkout.time, today);
+  const dateTime = newWorkout.repeating ? null : parseTimeToDate(newWorkout.time, today);
   const daysIndex = newWorkout.days.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
   const isToday = daysIndex.includes(todayDayIndex);
   const completionForToday = isWorkoutCompleted(newId, today);
+  const nextDueAt = newWorkout.repeating && isToday ? new Date() : null;
 
   const runtimeWorkout = {
     ...newWorkout,
-    dateTime,
+    dateTime: newWorkout.repeating ? nextDueAt : dateTime,
     daysIndex,
     isToday,
     alertedInitially: false,
     nextReminderAt: null,
-    completed: completionForToday,
+    completed: newWorkout.repeating ? false : completionForToday,
+    nextDueAt,
     lastDayKey: todayKey
   };
 
   if (isViewingToday()) {
-    runtimeWorkout.completed = initialCompleted;
+    runtimeWorkout.completed = newWorkout.repeating ? false : initialCompleted;
   }
 
   workouts.push(runtimeWorkout);
   workouts.sort((a, b) => a.time.localeCompare(b.time)); // Nach Zeit sortieren
 
   saveWorkoutsToStorage(workouts);
-  setWorkoutCompleted(newId, initialCompleted, activeDate);
+  if (!newWorkout.repeating) {
+    setWorkoutCompleted(newId, initialCompleted, activeDate);
+  }
   renderOverview();
 }
 
@@ -801,18 +860,34 @@ function updateWorkout(id, workoutData) {
 
   const oldWorkout = workouts[idx];
   const todayDayIndex = new Date().getDay();
-  const dateTime = parseTimeToDate(workoutData.time, new Date());
+  const repeating = Boolean(workoutData.repeating);
+  const repeatIntervalMinutes = normalizeRepeatInterval(workoutData.repeatIntervalMinutes);
+  const dateTime = repeating ? null : parseTimeToDate(workoutData.time, new Date());
   const daysIndex = workoutData.days.map((d) => WEEKDAY_MAP[d] ?? null).filter((x) => x !== null);
   const isToday = daysIndex.includes(todayDayIndex);
 
   workouts[idx] = {
     ...oldWorkout,
     ...workoutData,
+    repeating,
+    repeatIntervalMinutes,
     timers: normalizeWorkoutTimers(workoutData.timers, getFallbackTimerDuration()),
     dateTime,
     daysIndex,
     isToday
   };
+  if (!repeating) {
+    workouts[idx].nextDueAt = null;
+  } else if (workouts[idx].nextDueAt instanceof Date) {
+    // keep
+  } else if (workouts[idx].nextDueAt) {
+    workouts[idx].nextDueAt = new Date(workouts[idx].nextDueAt);
+  } else if (isToday) {
+    workouts[idx].nextDueAt = new Date();
+  }
+  if (repeating) {
+    workouts[idx].dateTime = workouts[idx].nextDueAt;
+  }
   workouts.sort((a, b) => a.time.localeCompare(b.time));
 
   saveWorkoutsToStorage(workouts);
@@ -840,9 +915,12 @@ function renderOverview() {
 
   workouts.forEach((workout) => {
     if (isCategoryHidden(workout.categoryId)) return;
+    const isRepeating = isRepeatingWorkout(workout);
     const isOnSelectedDay = isWorkoutOnDate(workout, activeDate);
-    const isCompleted = Boolean(completions?.[activeDateKey]?.[workout.id]);
-    const scheduledDateTime = parseTimeToDate(workout.time, activeDate);
+    const isCompleted = isRepeating ? false : Boolean(completions?.[activeDateKey]?.[workout.id]);
+    const scheduledDateTime = isRepeating
+      ? (workout.nextDueAt instanceof Date ? workout.nextDueAt : null)
+      : parseTimeToDate(workout.time, activeDate);
 
     const card = document.createElement("article");
     card.className = "workout-card";
@@ -865,7 +943,12 @@ function renderOverview() {
     header.className = "workout-card-header";
     const timeEl = document.createElement("div");
     timeEl.className = "workout-time";
-    timeEl.textContent = workout.time;
+    if (isRepeating) {
+      const dueLabel = getRepeatingDueLabel(workout);
+      timeEl.textContent = dueLabel || `Alle ${getRepeatMinutes(workout)} Min`;
+    } else {
+      timeEl.textContent = workout.time;
+    }
     const labelEl = document.createElement("div");
     labelEl.className = "workout-label";
     labelEl.textContent = getCategoryName(workout.categoryId);
@@ -890,7 +973,15 @@ function renderOverview() {
       statusText = "Ruhetag";
       statusEl.classList.add("workout-status--not-today");
     } else if (isTodayView) {
-      if (now >= scheduledDateTime) {
+      if (isRepeating) {
+        if (scheduledDateTime && now >= scheduledDateTime) {
+          statusText = "Fällig";
+          statusEl.classList.add("workout-status--overdue");
+        } else {
+          statusText = "Geplant";
+          statusEl.classList.add("workout-status--pending");
+        }
+      } else if (scheduledDateTime && now >= scheduledDateTime) {
         statusText = "Fällig";
         statusEl.classList.add("workout-status--overdue");
       } else {
@@ -898,8 +989,8 @@ function renderOverview() {
         statusEl.classList.add("workout-status--pending");
       }
     } else if (isPastView) {
-      statusText = "Nachholen";
-      statusEl.classList.add("workout-status--overdue");
+      statusText = isRepeating ? "Wiederholend" : "Nachholen";
+      statusEl.classList.add(isRepeating ? "workout-status--pending" : "workout-status--overdue");
     } else {
       statusText = "Geplant";
       statusEl.classList.add("workout-status--pending");
@@ -935,7 +1026,11 @@ function showActiveWorkout(workout) {
   currentWorkout = workout;
   $("#activeTitle").textContent = workout.title;
   $("#activeLabel").textContent = getCategoryName(workout.categoryId);
-  $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
+  if (isRepeatingWorkout(workout)) {
+    $("#activeTime").textContent = `Wiederholend: alle ${getRepeatMinutes(workout)} Min`;
+  } else {
+    $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
+  }
   const activeDateLabel = $("#activeDate");
   if (activeDateLabel) {
     activeDateLabel.textContent = formatDateLabel(activeDate);
@@ -963,7 +1058,7 @@ function showActiveWorkout(workout) {
 
   const footer = document.querySelector('.active-footer');
   const container = document.querySelector('.active-container');
-  const isCompletedForDate = isWorkoutCompleted(workout.id, activeDate);
+  const isCompletedForDate = isRepeatingWorkout(workout) ? false : isWorkoutCompleted(workout.id, activeDate);
   const isOnSelectedDay = isWorkoutOnDate(workout, activeDate);
   const isPastView = activeDate < startOfDay(new Date());
   const allowActiveControls = isOnSelectedDay && !isCompletedForDate && (isViewingToday() || isPastView);
@@ -1001,10 +1096,19 @@ function updateExerciseListSizing(list, count) {
 
 function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
-  if (isViewingToday()) {
-    currentWorkout.completed = true;
+  if (isRepeatingWorkout(currentWorkout)) {
+    const minutes = getRepeatMinutes(currentWorkout);
+    currentWorkout.nextDueAt = new Date(Date.now() + minutes * 60 * 1000);
+    currentWorkout.dateTime = currentWorkout.nextDueAt;
+    currentWorkout.alertedInitially = false;
+    currentWorkout.nextReminderAt = null;
+    saveWorkoutsToStorage(workouts);
+  } else {
+    if (isViewingToday()) {
+      currentWorkout.completed = true;
+    }
+    setWorkoutCompleted(currentWorkout.id, true, activeDate);
   }
-  setWorkoutCompleted(currentWorkout.id, true, activeDate);
   if (standUpSettings.resetOnWorkoutComplete) {
     resetStandUpTimer();
   }
@@ -1026,28 +1130,62 @@ function setupReminderTicker() {
 
     workouts.forEach((w) => {
       if (w.lastDayKey !== todayKey) {
-        w.completed = isWorkoutCompleted(w.id, now);
+        w.completed = isRepeatingWorkout(w) ? false : isWorkoutCompleted(w.id, now);
         w.alertedInitially = false;
         w.nextReminderAt = null;
-        w.dateTime = parseTimeToDate(w.time, now);
+        if (isRepeatingWorkout(w)) {
+          w.isToday = w.daysIndex.includes(todayDayIndex);
+          if (w.isToday) {
+            if (!w.nextDueAt || w.nextDueAt < startOfDay(now)) {
+              w.nextDueAt = new Date();
+            }
+          } else {
+            w.nextDueAt = null;
+          }
+          w.dateTime = w.nextDueAt;
+        } else {
+          w.dateTime = parseTimeToDate(w.time, now);
+        }
         w.lastDayKey = todayKey;
-        w.isToday = w.daysIndex.includes(todayDayIndex);
+        if (!isRepeatingWorkout(w)) {
+          w.isToday = w.daysIndex.includes(todayDayIndex);
+        }
+        saveWorkoutsToStorage(workouts);
         needsRerender = true;
       }
       if (isCategoryHidden(w.categoryId)) return;
       if (w.completed) return;
       if (!w.isToday) return;
-      if (!w.dateTime) return;
-
-      if (!w.alertedInitially && now >= w.dateTime) {
-        w.alertedInitially = true;
-        w.nextReminderAt = new Date(w.dateTime.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
-        triggerWorkoutAlert(w, false);
-        needsRerender = true;
-      } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
-        triggerWorkoutAlert(w, true);
-        while (w.nextReminderAt <= now) {
-          w.nextReminderAt = new Date(w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
+      if (isRepeatingWorkout(w)) {
+        if (!w.nextDueAt || w.nextDueAt < startOfDay(now)) {
+          w.nextDueAt = new Date();
+          w.alertedInitially = false;
+          w.nextReminderAt = null;
+          saveWorkoutsToStorage(workouts);
+          needsRerender = true;
+        }
+        if (!w.alertedInitially && now >= w.nextDueAt) {
+          w.alertedInitially = true;
+          w.nextReminderAt = new Date(w.nextDueAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
+          triggerWorkoutAlert(w, false);
+          needsRerender = true;
+        } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
+          triggerWorkoutAlert(w, true);
+          while (w.nextReminderAt <= now) {
+            w.nextReminderAt = new Date(w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
+          }
+        }
+      } else if (w.dateTime) {
+        if (!w.alertedInitially && now >= w.dateTime) {
+          w.alertedInitially = true;
+          w.nextReminderAt = new Date(w.dateTime.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
+          triggerWorkoutAlert(w, false);
+          needsRerender = true;
+        } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
+          triggerWorkoutAlert(w, true);
+          while (w.nextReminderAt <= now) {
+            w.nextReminderAt = new Date(w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
+          }
         }
       }
     });
@@ -1115,6 +1253,9 @@ function openModal(workout = null) {
   const deleteBtn = $("#deleteWorkoutBtn");
   const title = $("#modalTitle");
   const toggleBtn = $("#toggleCompletionBtn");
+  const repeatToggle = $("#wfRepeating");
+  const repeatMinutesInput = $("#wfRepeatMinutes");
+  const timeInput = $("#wfTime");
 
   // Reset Form
   form.reset();
@@ -1151,6 +1292,8 @@ function openModal(workout = null) {
     $("#wfGrip").value = (workout.grip && workout.grip !== "-") ? workout.grip : "";
     $("#wfExercises").value = (workout.exercises || []).join("\n");
     renderTimerEditor(workout.timers || []);
+    repeatToggle.checked = Boolean(workout.repeating);
+    repeatMinutesInput.value = getRepeatMinutes(workout);
 
     (workout.days || []).forEach(day => {
       const cb = daysContainer.querySelector(`input[value="${day}"]`);
@@ -1164,7 +1307,7 @@ function openModal(workout = null) {
     };
 
     toggleBtn.style.display = "inline-flex";
-    const completionState = isWorkoutCompleted(workout.id, activeDate);
+    const completionState = isRepeatingWorkout(workout) ? false : isWorkoutCompleted(workout.id, activeDate);
     setToggleCompletionButtonState(completionState ? "completed" : "pending");
   } else {
     // Create Mode
@@ -1175,8 +1318,34 @@ function openModal(workout = null) {
     // Default: Alle Tage ausgewählt
     daysContainer.querySelectorAll("input").forEach(cb => cb.checked = true);
     renderTimerEditor([]);
+    repeatToggle.checked = false;
+    repeatMinutesInput.value = DEFAULT_REPEAT_INTERVAL_MINUTES;
   }
 
+  if (repeatToggle) {
+    repeatToggle.onchange = () => {
+      updateRepeatFields();
+    };
+  }
+
+  function updateRepeatFields() {
+    const isRepeating = repeatToggle?.checked;
+    if (timeInput) {
+      timeInput.disabled = Boolean(isRepeating);
+      timeInput.required = !isRepeating;
+      if (isRepeating && !timeInput.value) {
+        timeInput.value = "00:00";
+      }
+    }
+    if (repeatMinutesInput) {
+      repeatMinutesInput.disabled = !isRepeating;
+    }
+    if (toggleBtn) {
+      toggleBtn.style.display = isRepeating ? "none" : "inline-flex";
+    }
+  }
+
+  updateRepeatFields();
   updateModalPreview();
   modal.classList.remove("modal--hidden");
   modal.setAttribute("aria-hidden", "false");
@@ -1300,6 +1469,9 @@ function handleModalSubmit(e) {
   const title = $("#wfTitle").value;
   const categoryId = $("#wfCategory").value;
   const time = $("#wfTime").value;
+  const repeating = Boolean($("#wfRepeating").checked);
+  const repeatMinutesInput = $("#wfRepeatMinutes").value;
+  const repeatIntervalMinutes = normalizeRepeatInterval(repeatMinutesInput);
   const grip = $("#wfGrip").value.trim(); // Empty string if not provided
   const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
   const timerRows = Array.from(document.querySelectorAll("#wfTimersContainer .timer-row"));
@@ -1323,13 +1495,15 @@ function handleModalSubmit(e) {
     .map(cb => cb.value);
 
   const toggleBtn = $("#toggleCompletionBtn");
-  const completionState = toggleBtn ? toggleBtn.dataset.state === "completed" : null;
+  const completionState = repeating ? null : (toggleBtn ? toggleBtn.dataset.state === "completed" : null);
 
   const data = {
     title,
     categoryId,
-    time,
+    time: repeating ? (time || "00:00") : time,
     grip,
+    repeating,
+    repeatIntervalMinutes,
     days: selectedDays,
     exercises,
     timers: normalizeWorkoutTimers(timers, getFallbackTimerDuration())
