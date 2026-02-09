@@ -27,10 +27,15 @@ function normalizeCategories(categories) {
       id = createCategoryId();
     }
     seen.add(id);
+    const activeValue = category?.active;
+    const legacyHidden = category?.hidden;
+    const isActive = typeof activeValue === "boolean"
+      ? activeValue
+      : !(typeof legacyHidden === "boolean" ? legacyHidden : false);
     normalized.push({
       id,
       name,
-      hidden: Boolean(category?.hidden)
+      active: isActive
     });
   });
 
@@ -48,7 +53,9 @@ function getCategoryName(categoryId) {
 
 function isCategoryHidden(categoryId) {
   if (!categoryId) return false;
-  return Boolean(getCategoryById(categoryId)?.hidden);
+  const category = getCategoryById(categoryId);
+  if (!category) return false;
+  return !category.active;
 }
 
 // Settings laden/speichern
@@ -671,7 +678,7 @@ async function loadWorkouts() {
     const key = legacyLabel.toLowerCase();
     let category = categoriesByName.get(key);
     if (!category) {
-      category = { id: createCategoryId(), name: legacyLabel, hidden: false };
+      category = { id: createCategoryId(), name: legacyLabel, active: true };
       categories.push(category);
       categoriesById.set(category.id, category);
       categoriesByName.set(key, category);
@@ -1538,12 +1545,12 @@ function renderCategorySettings() {
     const toggleWrap = document.createElement("div");
     toggleWrap.className = "category-toggle";
     const toggleLabel = document.createElement("span");
-    toggleLabel.textContent = "Ausblenden";
+    toggleLabel.textContent = "Aktiv";
     const toggle = document.createElement("label");
     toggle.className = "switch";
     const toggleInput = document.createElement("input");
     toggleInput.type = "checkbox";
-    toggleInput.checked = category.hidden;
+    toggleInput.checked = category.active;
     const slider = document.createElement("span");
     slider.className = "slider round";
     toggle.appendChild(toggleInput);
@@ -1575,7 +1582,7 @@ function renderCategorySettings() {
     toggleInput.addEventListener("change", () => {
       const updated = normalizeCategories(window.categories).map((item) => {
         if (item.id !== category.id) return item;
-        return { ...item, hidden: toggleInput.checked };
+        return { ...item, active: toggleInput.checked };
       });
       saveCategories(updated);
       renderOverview();
@@ -1703,7 +1710,7 @@ function setupEventListeners() {
       const newCategory = {
         id: createCategoryId(),
         name: "Neue Kategorie",
-        hidden: false
+        active: true
       };
       const updated = [...current, newCategory];
       saveCategories(updated);

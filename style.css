@@ -860,6 +860,7 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="time"],
+.form-group select,
 .form-group textarea {
   background: var(--bg-elevated-soft);
   border: 1px solid var(--border-subtle);
@@ -1152,15 +1153,25 @@ body {
 }
 
 .category-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1.4fr auto auto;
+  gap: 10px;
   align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-elevated-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
 }
 
 .category-row input {
   flex: 1;
   min-width: 180px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 0.95rem;
 }
 
 .category-toggle {
@@ -1174,6 +1185,28 @@ body {
 .category-actions {
   display: flex;
   gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .category-row {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "name"
+      "toggle"
+      "actions";
+  }
+
+  .category-row input {
+    grid-area: name;
+  }
+
+  .category-toggle {
+    grid-area: toggle;
+  }
+
+  .category-actions {
+    grid-area: actions;
+  }
 }
 
 .standup-header {
