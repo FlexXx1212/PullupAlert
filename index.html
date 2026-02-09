@@ -135,23 +135,25 @@
               </div>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label for="wfTime">Uhrzeit</label>
-                <input type="time" id="wfTime" required />
+            <div class="form-row form-row--repeat">
+              <div class="repeat-left">
+                <div class="form-group" id="wfTimeGroup">
+                  <label for="wfTime">Uhrzeit</label>
+                  <input type="time" id="wfTime" required />
+                </div>
+                <div class="form-group is-hidden" id="wfRepeatGroup">
+                  <label for="wfRepeatMinutes">Intervall (Minuten)</label>
+                  <input type="number" id="wfRepeatMinutes" min="1" value="90" />
+                </div>
               </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group form-group--switch">
-                <label for="wfRepeating">Wiederholend</label>
-                <label class="switch">
-                  <input type="checkbox" id="wfRepeating">
-                  <span class="slider round"></span>
-                </label>
-              </div>
-              <div class="form-group">
-                <label for="wfRepeatMinutes">Intervall (Minuten)</label>
-                <input type="number" id="wfRepeatMinutes" min="1" value="90" disabled />
+              <div class="repeat-right">
+                <div class="form-group form-group--switch">
+                  <label for="wfRepeating">Wiederholend</label>
+                  <label class="switch">
+                    <input type="checkbox" id="wfRepeating">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
               </div>
             </div>
 

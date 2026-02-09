@@ -878,6 +878,29 @@ body {
   margin-bottom: 16px;
 }
 
+.form-row--repeat {
+  align-items: center;
+}
+
+.repeat-left,
+.repeat-right {
+  flex: 1;
+  display: flex;
+}
+
+.repeat-left {
+  align-items: stretch;
+}
+
+.repeat-left .form-group {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.repeat-right {
+  justify-content: flex-end;
+}
+
 .form-group {
   flex: 1;
   display: flex;
@@ -917,6 +940,10 @@ body {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+}
+
+.is-hidden {
+  display: none;
 }
 
 .timer-editor {
