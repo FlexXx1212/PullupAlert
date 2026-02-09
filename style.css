@@ -901,6 +901,17 @@ body {
   justify-content: flex-end;
 }
 
+.form-row--repeat .repeat-right {
+  align-items: flex-start;
+}
+
+.form-row--repeat .repeat-switch {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
 .form-group {
   flex: 1;
   display: flex;
