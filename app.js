@@ -289,6 +289,21 @@ function getRepeatMinutes(workout) {
   return normalizeRepeatInterval(workout.repeatIntervalMinutes);
 }
 
+function formatTimeShort(date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function getRepeatingDueLabel(workout) {
+  if (!isRepeatingWorkout(workout)) return "";
+  const nextDueAt = workout?.nextDueAt instanceof Date ? workout.nextDueAt : null;
+  if (!nextDueAt) return "";
+  const diffMinutes = Math.max(0, Math.ceil((nextDueAt.getTime() - Date.now()) / 60000));
+  return `${formatTimeShort(nextDueAt)} (${diffMinutes} Min)`;
+}
+
 function loadCompletions() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -928,9 +943,12 @@ function renderOverview() {
     header.className = "workout-card-header";
     const timeEl = document.createElement("div");
     timeEl.className = "workout-time";
-    timeEl.textContent = isRepeating
-      ? `Alle ${getRepeatMinutes(workout)} Min`
-      : workout.time;
+    if (isRepeating) {
+      const dueLabel = getRepeatingDueLabel(workout);
+      timeEl.textContent = dueLabel || `Alle ${getRepeatMinutes(workout)} Min`;
+    } else {
+      timeEl.textContent = workout.time;
+    }
     const labelEl = document.createElement("div");
     labelEl.className = "workout-label";
     labelEl.textContent = getCategoryName(workout.categoryId);
