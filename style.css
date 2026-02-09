@@ -884,6 +884,7 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="time"],
+.form-group input[type="number"],
 .form-group select,
 .form-group textarea {
   background: var(--bg-elevated-soft);
@@ -893,6 +894,19 @@ body {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 1rem;
+}
+
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-group--switch {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .timer-editor {
