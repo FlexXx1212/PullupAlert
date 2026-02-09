@@ -91,6 +91,14 @@
   justify-content: space-between;
 }
 
+.setting-group--disabled {
+  opacity: 0.55;
+}
+
+.setting-group--disabled .slider {
+  cursor: not-allowed;
+}
+
 .settings-form label {
   color: var(--text-muted);
   font-size: 1rem;

@@ -1136,7 +1136,8 @@ function updateExerciseListSizing(list, count) {
 
 function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
-  if (isRepeatingWorkout(currentWorkout)) {
+  const isRepeating = isRepeatingWorkout(currentWorkout);
+  if (isRepeating) {
     const minutes = getRepeatMinutes(currentWorkout);
     currentWorkout.nextDueAt = new Date(Date.now() + minutes * 60 * 1000);
     currentWorkout.dateTime = currentWorkout.nextDueAt;
@@ -1149,7 +1150,7 @@ function markCurrentWorkoutCompleted() {
     }
     setWorkoutCompleted(currentWorkout.id, true, activeDate);
   }
-  if (standUpSettings.resetOnWorkoutComplete) {
+  if (standUpSettings.resetOnWorkoutComplete && (!isRepeating || standUpSettings.resetOnRepeatingWorkouts)) {
     resetStandUpTimer();
   }
   stopActiveTimer({ reset: true });
@@ -1972,7 +1973,8 @@ let standUpSettings = {
   maxTime: 75,
   minDur: 10,
   maxDur: 20,
-  resetOnWorkoutComplete: false
+  resetOnWorkoutComplete: false,
+  resetOnRepeatingWorkouts: false
 };
 
 let standUpState = {
@@ -2029,6 +2031,8 @@ function initStandUpLogic() {
   const maxDurIn = $("#suMaxDur");
   const resetBtn = $("#standUpReset");
   const resetOnWorkoutToggle = $("#suResetOnWorkout");
+  const resetOnRepeatingToggle = $("#suResetOnRepeatingWorkouts");
+  const resetOnRepeatingGroup = $("#suResetOnRepeatingGroup");
 
   if (toggle) {
     toggle.checked = standUpSettings.enabled;
@@ -2049,8 +2053,28 @@ function initStandUpLogic() {
     resetOnWorkoutToggle.addEventListener("change", (e) => {
       standUpSettings.resetOnWorkoutComplete = e.target.checked;
       saveStandUpSettings();
+      updateRepeatingResetState();
     });
   }
+
+  if (resetOnRepeatingToggle) {
+    resetOnRepeatingToggle.checked = Boolean(standUpSettings.resetOnRepeatingWorkouts);
+    resetOnRepeatingToggle.addEventListener("change", (e) => {
+      standUpSettings.resetOnRepeatingWorkouts = e.target.checked;
+      saveStandUpSettings();
+    });
+  }
+
+  const updateRepeatingResetState = () => {
+    if (!resetOnRepeatingToggle) return;
+    const enabled = Boolean(standUpSettings.resetOnWorkoutComplete);
+    resetOnRepeatingToggle.disabled = !enabled;
+    if (resetOnRepeatingGroup) {
+      resetOnRepeatingGroup.classList.toggle("setting-group--disabled", !enabled);
+    }
+  };
+
+  updateRepeatingResetState();
 
   // Inputs
   const updateInputs = () => {
