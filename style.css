@@ -906,10 +906,16 @@ body {
 }
 
 .form-row--repeat .repeat-switch {
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr;
   align-items: flex-start;
   justify-content: flex-start;
   gap: 6px;
+  height: 100%;
+}
+
+.form-row--repeat .repeat-switch .switch {
+  align-self: center;
 }
 
 .form-group {
