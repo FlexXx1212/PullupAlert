@@ -227,6 +227,7 @@ const BASE_TITLE = "Pullup Alert";
 const REMINDER_INTERVAL_MINUTES = 30;
 const DEFAULT_TIMER_DURATION_SECONDS = 75;
 const DEFAULT_REPEAT_INTERVAL_MINUTES = 90;
+const REPEATING_LABEL_REFRESH_MS = 15 * 1000;
 const STORAGE_KEY = "pullup-alert-completions";
 
 // Wochentag-Mapping (Deutsch → Date.getDay Index)
@@ -252,6 +253,7 @@ let activeTimerId = null;
 let timerStateById = {};
 let allowTimerControls = false;
 let activeDate = startOfDay(new Date());
+let lastRepeatingLabelRefreshAt = 0;
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -352,6 +354,16 @@ function getRepeatingDueLabel(workout) {
   if (!nextDueAt) return "";
   const diffMinutes = Math.max(0, Math.ceil((nextDueAt.getTime() - Date.now()) / 60000));
   return `${formatTimeShort(nextDueAt)} (${diffMinutes} Min)`;
+}
+
+function updateActiveRepeatingLabel() {
+  if (!currentWorkout || !isRepeatingWorkout(currentWorkout)) return;
+  const activeViewVisible = document.getElementById("activeView")?.classList.contains("view--active");
+  if (!activeViewVisible) return;
+  const dueLabel = getRepeatingDueLabel(currentWorkout);
+  $("#activeTime").textContent = dueLabel
+    ? `Nächste Runde: ${dueLabel}`
+    : `Wiederholend: alle ${getRepeatMinutes(currentWorkout)} Min`;
 }
 
 function loadCompletions() {
@@ -1076,7 +1088,10 @@ function showActiveWorkout(workout) {
   $("#activeTitle").textContent = workout.title;
   $("#activeLabel").textContent = getCategoryName(workout.categoryId);
   if (isRepeatingWorkout(workout)) {
-    $("#activeTime").textContent = `Wiederholend: alle ${getRepeatMinutes(workout)} Min`;
+    const dueLabel = getRepeatingDueLabel(workout);
+    $("#activeTime").textContent = dueLabel
+      ? `Nächste Runde: ${dueLabel}`
+      : `Wiederholend: alle ${getRepeatMinutes(workout)} Min`;
   } else {
     $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
   }
@@ -1167,6 +1182,7 @@ function setupReminderTicker() {
     const now = new Date();
     const todayKey = getTodayKey();
     const todayDayIndex = now.getDay();
+    const shouldRefreshRepeatingLabels = now.getTime() - lastRepeatingLabelRefreshAt >= REPEATING_LABEL_REFRESH_MS;
     let needsRerender = false;
 
     workouts.forEach((w) => {
@@ -1230,6 +1246,13 @@ function setupReminderTicker() {
         }
       }
     });
+    if (shouldRefreshRepeatingLabels) {
+      lastRepeatingLabelRefreshAt = now.getTime();
+      if (workouts.some((w) => isRepeatingWorkout(w))) {
+        needsRerender = true;
+      }
+      updateActiveRepeatingLabel();
+    }
     if (needsRerender) renderOverview();
   }, 1000);
 }
