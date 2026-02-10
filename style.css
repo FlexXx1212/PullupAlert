@@ -1006,10 +1006,6 @@ body {
   font-size: 0.9rem;
 }
 
-.timer-seconds-input {
-  max-width: 60px;
-}
-
 .timer-seconds-label {
   display: inline-flex;
   align-items: center;
