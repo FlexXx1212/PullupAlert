@@ -674,11 +674,11 @@ body {
   position: relative;
 }
 
-.exercise-item--bullet {
+.exercise-list .exercise-item--bullet {
   padding-left: 18px;
 }
 
-.exercise-item--bullet::before {
+.exercise-list .exercise-item--bullet::before {
   content: "•";
   position: absolute;
   left: 0;
