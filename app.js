@@ -229,6 +229,7 @@ const DEFAULT_TIMER_DURATION_SECONDS = 75;
 const DEFAULT_REPEAT_INTERVAL_MINUTES = 90;
 const REPEATING_LABEL_REFRESH_MS = 15 * 1000;
 const STORAGE_KEY = "pullup-alert-completions";
+const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
 
 // Wochentag-Mapping (Deutsch → Date.getDay Index)
 const WEEKDAY_MAP = {
@@ -353,7 +354,7 @@ function getRepeatingDueLabel(workout) {
   const nextDueAt = workout?.nextDueAt instanceof Date ? workout.nextDueAt : null;
   if (!nextDueAt) return "";
   const diffMinutes = Math.max(0, Math.ceil((nextDueAt.getTime() - Date.now()) / 60000));
-  return `${formatTimeShort(nextDueAt)} (${diffMinutes} Min)`;
+  return `${formatTimeShort(nextDueAt)} (${diffMinutes} Min)${getRepeatingCompletionCountSuffix(workout.id, activeDate)}`;
 }
 
 function updateActiveRepeatingLabel() {
@@ -363,7 +364,7 @@ function updateActiveRepeatingLabel() {
   const dueLabel = getRepeatingDueLabel(currentWorkout);
   $("#activeTime").textContent = dueLabel
     ? `Nächste Runde: ${dueLabel}`
-    : `Wiederholend: alle ${getRepeatMinutes(currentWorkout)} Min`;
+    : `Wiederholend: alle ${getRepeatMinutes(currentWorkout)} Min${getRepeatingCompletionCountSuffix(currentWorkout.id, activeDate)}`;
 }
 
 function loadCompletions() {
@@ -383,6 +384,49 @@ function saveCompletions(completions) {
   } catch (e) {
     console.error("Fehler beim Speichern in localStorage", e);
   }
+}
+
+function loadRepeatingCompletionCounts() {
+  try {
+    const raw = localStorage.getItem(REPEATING_COMPLETION_COUNTS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Fehler beim Laden der Wiederholungszähler", e);
+    return {};
+  }
+}
+
+function saveRepeatingCompletionCounts(completionCounts) {
+  try {
+    localStorage.setItem(REPEATING_COMPLETION_COUNTS_KEY, JSON.stringify(completionCounts));
+  } catch (e) {
+    console.error("Fehler beim Speichern der Wiederholungszähler", e);
+  }
+}
+
+function getRepeatingCompletionCount(workoutId, date = new Date()) {
+  if (!workoutId) return 0;
+  const completionCounts = loadRepeatingCompletionCounts();
+  const dateKey = getDateKey(date);
+  return Math.max(0, parseInt(completionCounts?.[dateKey]?.[workoutId], 10) || 0);
+}
+
+function incrementRepeatingCompletionCount(workoutId, date = new Date()) {
+  if (!workoutId) return;
+  const completionCounts = loadRepeatingCompletionCounts();
+  const dateKey = getDateKey(date);
+  if (!completionCounts[dateKey]) {
+    completionCounts[dateKey] = {};
+  }
+  const previousCount = Math.max(0, parseInt(completionCounts[dateKey][workoutId], 10) || 0);
+  completionCounts[dateKey][workoutId] = previousCount + 1;
+  saveRepeatingCompletionCounts(completionCounts);
+}
+
+function getRepeatingCompletionCountSuffix(workoutId, date = new Date()) {
+  const count = getRepeatingCompletionCount(workoutId, date);
+  return ` [${count}x]`;
 }
 
 function isWorkoutCompleted(workoutId, date = new Date()) {
@@ -1006,7 +1050,7 @@ function renderOverview() {
     timeEl.className = "workout-time";
     if (isRepeating) {
       const dueLabel = getRepeatingDueLabel(workout);
-      timeEl.textContent = dueLabel || `Alle ${getRepeatMinutes(workout)} Min`;
+      timeEl.textContent = dueLabel || `Alle ${getRepeatMinutes(workout)} Min${getRepeatingCompletionCountSuffix(workout.id, activeDate)}`;
     } else {
       timeEl.textContent = workout.time;
     }
@@ -1091,7 +1135,7 @@ function showActiveWorkout(workout) {
     const dueLabel = getRepeatingDueLabel(workout);
     $("#activeTime").textContent = dueLabel
       ? `Nächste Runde: ${dueLabel}`
-      : `Wiederholend: alle ${getRepeatMinutes(workout)} Min`;
+      : `Wiederholend: alle ${getRepeatMinutes(workout)} Min${getRepeatingCompletionCountSuffix(workout.id, activeDate)}`;
   } else {
     $("#activeTime").textContent = `Zeit: ${workout.time} Uhr`;
   }
@@ -1153,6 +1197,7 @@ function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
   const isRepeating = isRepeatingWorkout(currentWorkout);
   if (isRepeating) {
+    incrementRepeatingCompletionCount(currentWorkout.id, activeDate);
     const minutes = getRepeatMinutes(currentWorkout);
     currentWorkout.nextDueAt = new Date(Date.now() + minutes * 60 * 1000);
     currentWorkout.dateTime = currentWorkout.nextDueAt;
