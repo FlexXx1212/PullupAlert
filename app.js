@@ -1,6 +1,19 @@
 // Konstanten für Settings-Storage
 const SETTINGS_KEY = "pullup-alert-settings";
 const WORKOUTS_KEY = "pullup-alert-workouts"; // Neuer Key für Workouts
+const STORAGE_KEY = "pullup-alert-completions";
+const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
+const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
+const STANDUP_STATE_KEY = "pullup-alert-standup-state";
+
+const EXPORTABLE_STORAGE_KEYS = [
+  SETTINGS_KEY,
+  WORKOUTS_KEY,
+  STORAGE_KEY,
+  REPEATING_COMPLETION_COUNTS_KEY,
+  STANDUP_SETTINGS_KEY,
+  STANDUP_STATE_KEY
+];
 
 const DEFAULT_EXERCISE_VARIABLES = [
   { name: "Pullups", prefix: "PULL", sets: 2, reps: 3 },
@@ -229,8 +242,6 @@ const REMINDER_INTERVAL_MINUTES = 30;
 const DEFAULT_TIMER_DURATION_SECONDS = 75;
 const DEFAULT_REPEAT_INTERVAL_MINUTES = 90;
 const REPEATING_LABEL_REFRESH_MS = 15 * 1000;
-const STORAGE_KEY = "pullup-alert-completions";
-const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
 
 // Wochentag-Mapping (Deutsch → Date.getDay Index)
 const WEEKDAY_MAP = {
@@ -1484,6 +1495,69 @@ function closeSettingsModal() {
   modal.setAttribute("aria-hidden", "true");
 }
 
+function collectExportData() {
+  const data = {};
+  EXPORTABLE_STORAGE_KEYS.forEach((key) => {
+    const rawValue = localStorage.getItem(key);
+    if (rawValue === null) return;
+    try {
+      data[key] = JSON.parse(rawValue);
+    } catch {
+      data[key] = rawValue;
+    }
+  });
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data
+  };
+}
+
+function exportAllData() {
+  const exportPayload = collectExportData();
+  const json = JSON.stringify(exportPayload, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `pullup-alert-backup-${timestamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importAllDataFromFile(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result?.toString() || "{}");
+      if (!parsed || typeof parsed !== "object" || typeof parsed.data !== "object") {
+        throw new Error("Ungültiges Backup-Format.");
+      }
+
+      EXPORTABLE_STORAGE_KEYS.forEach((key) => {
+        if (!(key in parsed.data)) {
+          localStorage.removeItem(key);
+          return;
+        }
+        localStorage.setItem(key, JSON.stringify(parsed.data[key]));
+      });
+
+      alert("Import erfolgreich. Die App wird neu geladen.");
+      window.location.reload();
+    } catch (error) {
+      console.error("Import fehlgeschlagen", error);
+      alert("Import fehlgeschlagen. Bitte eine gültige JSON-Datei wählen.");
+    }
+  };
+
+  reader.readAsText(file);
+}
+
 function updateModalPreview() {
   const text = $("#wfExercises").value;
   const preview = $("#wfPreview");
@@ -1976,6 +2050,25 @@ function setupEventListeners() {
     settingsBackdrop.addEventListener("click", closeSettingsModal);
   }
 
+  const exportDataBtn = $("#exportDataBtn");
+  const importDataBtn = $("#importDataBtn");
+  const importDataInput = $("#importDataInput");
+
+  if (exportDataBtn) {
+    exportDataBtn.addEventListener("click", exportAllData);
+  }
+
+  if (importDataBtn && importDataInput) {
+    importDataBtn.addEventListener("click", () => importDataInput.click());
+    importDataInput.addEventListener("change", (event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement)) return;
+      const [file] = input.files || [];
+      importAllDataFromFile(file);
+      input.value = "";
+    });
+  }
+
   const addExerciseVariableBtn = $("#addExerciseVariable");
   if (addExerciseVariableBtn) {
     addExerciseVariableBtn.addEventListener("click", () => {
@@ -2036,9 +2129,6 @@ document.addEventListener("DOMContentLoaded", initApp);
 /* ---------------------------------------------------------
    STAND UP ALERT LOGIC
    --------------------------------------------------------- */
-
-const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
-const STANDUP_STATE_KEY = "pullup-alert-standup-state";
 
 let standUpSettings = {
   enabled: false,

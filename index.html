@@ -264,6 +264,17 @@
               Kategorien können optional bei Workouts ausgewählt werden. Aktive Kategorien erscheinen in der Übersicht
               und lösen Erinnerungen aus.
             </p>
+            <div class="import-export-actions">
+              <button type="button" id="exportDataBtn" class="btn btn--ghost btn--small">
+                <i class="fa-solid fa-file-export" aria-hidden="true"></i>
+                Export
+              </button>
+              <button type="button" id="importDataBtn" class="btn btn--ghost btn--small">
+                <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+                Import
+              </button>
+              <input type="file" id="importDataInput" accept="application/json" hidden />
+            </div>
             <div id="categorySettingsList" class="categories-list"></div>
             <button type="button" id="addCategoryBtn" class="btn btn--ghost btn--small">+ Kategorie hinzufügen</button>
           </div>
