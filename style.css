@@ -106,6 +106,13 @@
   white-space: nowrap;
 }
 
+.import-export-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
 /* Custom Number Control */
 .number-control {
   display: flex;
