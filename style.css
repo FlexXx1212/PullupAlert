@@ -700,6 +700,12 @@ body {
   text-decoration: underline;
 }
 
+.exercise-item a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Timer & Footer */
 
 .active-footer {

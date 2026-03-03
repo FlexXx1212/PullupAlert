@@ -182,6 +182,7 @@ function escapeHtml(text) {
 function applyInlineFormatting(text) {
   const escaped = escapeHtml(text);
   return escaped
+    .replace(/\[([^\]]+?)\]\((https?:\/\/[^\s)]+)\)/gi, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/__(.+?)__/g, "<u>$1</u>");
 }
