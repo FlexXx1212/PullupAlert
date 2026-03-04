@@ -15,12 +15,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyACnVCHQ_nSbVutEnjpdV6hRyS9GUSvOvc",
+  authDomain: "kinovo-page.firebaseapp.com",
+  projectId: "kinovo-page",
+  storageBucket: "kinovo-page.firebasestorage.app",
+  messagingSenderId: "88640003884",
+  appId: "1:88640003884:web:f6f460171fc35b8e655689",
+  measurementId: "G-VS6D39V41N"
 };
 
 const app = initializeApp(firebaseConfig);
