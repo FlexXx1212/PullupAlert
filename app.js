@@ -916,7 +916,7 @@ function handleTimerFinished(timer) {
   const hasSecondaryPhase = Number.isFinite(timer.secondaryDurationSeconds) && timer.secondaryDurationSeconds > 0;
   const isSecondaryPhase = hasSecondaryPhase && state?.phase === "secondary";
 
-  if (!isSecondaryPhase) {
+  if (isSecondaryPhase) {
     playAlertSound();
   }
 
@@ -969,10 +969,8 @@ function startTimer(timerId) {
     if (!state) return;
     const nextRemaining = state.remaining - 1;
 
-    const isSecondaryPhase = state.phase === "secondary"
-      && Number.isFinite(timer.secondaryDurationSeconds)
-      && timer.secondaryDurationSeconds > 0;
-    if (isSecondaryPhase && nextRemaining === 3) {
+    const isPrimaryPhase = state.phase === "primary";
+    if (isPrimaryPhase && nextRemaining === 3) {
       playCountdownSound();
     }
 
