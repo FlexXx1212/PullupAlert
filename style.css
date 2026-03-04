@@ -647,7 +647,7 @@ body {
 .active-layout {
   display: flex;
   gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
   flex: 1;
   min-height: 0;
   height: 100%;
