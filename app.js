@@ -921,6 +921,15 @@ function handleTimerFinished(timer) {
   }
 
   if (!timer.repeating) {
+    if (hasSecondaryPhase && !isSecondaryPhase) {
+      setTimerState(timer.id, {
+        phase: "secondary",
+        remaining: timer.secondaryDurationSeconds
+      });
+      updateTimerCards();
+      return;
+    }
+
     sendTimerNotification(timer);
     stopTimer(timer.id, { reset: true });
     return;
@@ -1908,15 +1917,6 @@ function createTimerEditorRow(timer, container) {
   repeatLabel.appendChild(repeatInput);
   repeatLabel.append(" Loop");
 
-  const syncSecondaryVisibility = () => {
-    const isVisible = Boolean(repeatInput.checked);
-    secondarySecondsLabel.classList.toggle("timer-secondary-seconds-label--hidden", !isVisible);
-    secondarySecondsInput.disabled = !isVisible;
-  };
-
-  repeatInput.addEventListener("change", syncSecondaryVisibility);
-  syncSecondaryVisibility();
-
   fields.appendChild(nameInput);
   fields.appendChild(secondsLabel);
   fields.appendChild(secondarySecondsLabel);
@@ -1991,7 +1991,7 @@ function handleModalSubmit(e) {
       name: nameInput?.value.trim() || `Timer ${index + 1}`,
       durationSeconds: duration,
       repeating: Boolean(repeatInput?.checked),
-      secondaryDurationSeconds: Boolean(repeatInput?.checked) ? secondaryDuration : 0
+      secondaryDurationSeconds: secondaryDuration
     };
   });
 
