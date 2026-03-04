@@ -816,6 +816,12 @@ function playAlertSound() {
   audio.play().catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
 }
 
+function playCountdownSound() {
+  if (document.visibilityState !== "visible") return;
+  const audio = new Audio("countdown.mp3");
+  audio.play().catch((err) => console.warn("Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:", err));
+}
+
 // Timer
 function createTimerId() {
   return `t_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -837,7 +843,10 @@ function normalizeWorkoutTimers(timers = [], fallbackDuration = DEFAULT_TIMER_DU
     durationSeconds: Number.isFinite(timer.durationSeconds)
       ? Math.max(1, timer.durationSeconds)
       : fallbackDuration,
-    repeating: Boolean(timer.repeating)
+    repeating: Boolean(timer.repeating),
+    secondaryDurationSeconds: Number.isFinite(timer.secondaryDurationSeconds)
+      ? Math.max(0, timer.secondaryDurationSeconds)
+      : 0
   }));
 }
 
@@ -866,7 +875,10 @@ function setTimerState(timerId, updates) {
 function resetTimer(timerId) {
   const timer = currentWorkout?.timers?.find(t => t.id === timerId);
   if (!timer) return;
-  setTimerState(timerId, { remaining: timer.durationSeconds });
+  setTimerState(timerId, {
+    remaining: timer.durationSeconds,
+    phase: "primary"
+  });
 }
 
 function stopTimer(timerId, { reset = true } = {}) {
@@ -900,14 +912,37 @@ function sendTimerNotification(timer) {
 }
 
 function handleTimerFinished(timer) {
-  playAlertSound();
-  if (!timer.repeating) {
-    sendTimerNotification(timer);
-    stopTimer(timer.id, { reset: true });
+  const state = getTimerState(timer.id);
+  const hasSecondaryPhase = Number.isFinite(timer.secondaryDurationSeconds) && timer.secondaryDurationSeconds > 0;
+  const isSecondaryPhase = hasSecondaryPhase && state?.phase === "secondary";
+
+  if (hasSecondaryPhase) {
+    if (isSecondaryPhase) {
+      playAlertSound();
+    } else {
+      playCountdownSound();
+    }
+  } else {
+    playAlertSound();
+  }
+
+  if (hasSecondaryPhase && !isSecondaryPhase) {
+    setTimerState(timer.id, {
+      phase: "secondary",
+      remaining: timer.secondaryDurationSeconds
+    });
+    updateTimerCards();
     return;
   }
-  resetTimer(timer.id);
-  updateTimerCards();
+
+  if (timer.repeating) {
+    resetTimer(timer.id);
+    updateTimerCards();
+    return;
+  }
+
+  sendTimerNotification(timer);
+  stopTimer(timer.id, { reset: true });
 }
 
 function startTimer(timerId) {
@@ -925,6 +960,11 @@ function startTimer(timerId) {
     const state = getTimerState(timerId);
     if (!state) return;
     const nextRemaining = state.remaining - 1;
+
+    if (nextRemaining === 3) {
+      playCountdownSound();
+    }
+
     setTimerState(timerId, { remaining: nextRemaining });
     if (nextRemaining <= 0) {
       handleTimerFinished(timer);
@@ -957,6 +997,7 @@ function initializeTimerState(workout) {
   (workout.timers || []).forEach(timer => {
     timerStateById[timer.id] = {
       remaining: timer.durationSeconds,
+      phase: "primary",
       isRunning: false
     };
   });
@@ -969,7 +1010,7 @@ function renderWorkoutTimers(workout) {
   container.innerHTML = "";
 
   (workout.timers || []).forEach((timer) => {
-    const state = getTimerState(timer.id) || { remaining: timer.durationSeconds, isRunning: false };
+    const state = getTimerState(timer.id) || { remaining: timer.durationSeconds, phase: "primary", isRunning: false };
     const card = document.createElement("button");
     card.type = "button";
     card.className = "workout-timer";
@@ -988,7 +1029,9 @@ function renderWorkoutTimers(workout) {
     if (timer.repeating) {
       const repeatBadge = document.createElement("span");
       repeatBadge.className = "workout-timer-badge";
-      repeatBadge.textContent = "Loop";
+      repeatBadge.textContent = timer.secondaryDurationSeconds > 0
+        ? `Loop ${timer.durationSeconds}s/${timer.secondaryDurationSeconds}s`
+        : "Loop";
       header.appendChild(repeatBadge);
     }
 
@@ -1840,6 +1883,20 @@ function createTimerEditorRow(timer, container) {
   secondsLabel.appendChild(secondsInput);
   secondsLabel.append("Sek.");
 
+  const secondarySecondsInput = document.createElement("input");
+  secondarySecondsInput.type = "number";
+  secondarySecondsInput.min = "0";
+  secondarySecondsInput.max = "999";
+  secondarySecondsInput.className = "timer-seconds-input timer-secondary-seconds-input";
+  secondarySecondsInput.value = Number.isFinite(timer.secondaryDurationSeconds)
+    ? Math.max(0, timer.secondaryDurationSeconds)
+    : 0;
+
+  const secondarySecondsLabel = document.createElement("label");
+  secondarySecondsLabel.className = "timer-seconds-label timer-secondary-seconds-label";
+  secondarySecondsLabel.appendChild(secondarySecondsInput);
+  secondarySecondsLabel.append("Sek. extra");
+
   const repeatLabel = document.createElement("label");
   repeatLabel.className = "timer-repeat";
   const repeatInput = document.createElement("input");
@@ -1851,6 +1908,7 @@ function createTimerEditorRow(timer, container) {
 
   fields.appendChild(nameInput);
   fields.appendChild(secondsLabel);
+  fields.appendChild(secondarySecondsLabel);
   fields.appendChild(repeatLabel);
 
   const removeBtn = document.createElement("button");
@@ -1878,7 +1936,8 @@ function addTimerEditorRow(container) {
     id: createTimerId(),
     name: `Timer ${index}`,
     durationSeconds: getFallbackTimerDuration(),
-    repeating: false
+    repeating: false,
+    secondaryDurationSeconds: 0
   };
   container.appendChild(createTimerEditorRow(timer, container));
 }
@@ -1908,15 +1967,20 @@ function handleModalSubmit(e) {
     const nameInput = row.querySelector(".timer-name-input");
     const secondsInput = row.querySelector(".timer-seconds-input");
     const repeatInput = row.querySelector(".timer-repeat-input");
+    const secondarySecondsInput = row.querySelector(".timer-secondary-seconds-input");
     let duration = parseInt(secondsInput?.value, 10);
+    let secondaryDuration = parseInt(secondarySecondsInput?.value, 10);
     if (isNaN(duration) || duration < 1) duration = getFallbackTimerDuration();
     if (duration > 999) duration = 999;
+    if (isNaN(secondaryDuration) || secondaryDuration < 0) secondaryDuration = 0;
+    if (secondaryDuration > 999) secondaryDuration = 999;
 
     return {
       id: row.dataset.timerId || createTimerId(),
       name: nameInput?.value.trim() || `Timer ${index + 1}`,
       durationSeconds: duration,
-      repeating: Boolean(repeatInput?.checked)
+      repeating: Boolean(repeatInput?.checked),
+      secondaryDurationSeconds: secondaryDuration
     };
   });
 
