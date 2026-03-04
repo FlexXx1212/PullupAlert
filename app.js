@@ -147,23 +147,49 @@ async function handlePersistenceModeChange() {
 }
 
 function updateAuthUI(user) {
-  const signInBtn = document.getElementById("signInBtn");
-  const signOutBtn = document.getElementById("signOutBtn");
-  const authStatus = document.getElementById("authStatus");
-  if (!signInBtn || !signOutBtn || !authStatus) return;
+  const authButton = document.getElementById("headerAuthButton");
+  const authPopover = document.getElementById("authPopover");
+  const authPopoverName = document.getElementById("authPopoverName");
+  if (!authButton || !authPopover || !authPopoverName) return;
   const isLoggedIn = Boolean(user);
-  signInBtn.style.display = isLoggedIn ? "none" : "inline-flex";
-  signOutBtn.style.display = isLoggedIn ? "inline-flex" : "none";
-  authStatus.textContent = isLoggedIn ? `Angemeldet: ${user.displayName || user.email || user.uid}` : "Nicht angemeldet (lokal)";
+  authButton.textContent = isLoggedIn ? "User" : "Login";
+  authPopover.classList.toggle("auth-popover--visible", false);
+  authPopover.setAttribute("aria-hidden", "true");
+  if (isLoggedIn) {
+    authPopoverName.textContent = user.displayName || user.email || user.uid;
+  } else {
+    authPopoverName.textContent = "";
+  }
 }
 
 async function initializePersistence() {
   persistenceState.cache = loadLocalCache();
 
-  const signInBtn = document.getElementById("signInBtn");
-  const signOutBtn = document.getElementById("signOutBtn");
-  if (signInBtn) {
-    signInBtn.addEventListener("click", async () => {
+  const headerAuth = document.getElementById("headerAuth");
+  const authButton = document.getElementById("headerAuthButton");
+  const authPopover = document.getElementById("authPopover");
+  const authLogoutBtn = document.getElementById("authLogoutBtn");
+
+  function closeAuthPopover() {
+    if (!authPopover) return;
+    authPopover.classList.remove("auth-popover--visible");
+    authPopover.setAttribute("aria-hidden", "true");
+  }
+
+  function openAuthPopover() {
+    if (!authPopover || persistenceState.mode !== "firestore") return;
+    authPopover.classList.add("auth-popover--visible");
+    authPopover.setAttribute("aria-hidden", "false");
+  }
+
+  if (headerAuth) {
+    headerAuth.addEventListener("mouseenter", openAuthPopover);
+    headerAuth.addEventListener("mouseleave", closeAuthPopover);
+  }
+
+  if (authButton) {
+    authButton.addEventListener("click", async () => {
+      if (persistenceState.mode === "firestore") return;
       try {
         await signInWithGoogle();
       } catch (error) {
@@ -171,12 +197,15 @@ async function initializePersistence() {
       }
     });
   }
-  if (signOutBtn) {
-    signOutBtn.addEventListener("click", async () => {
+
+  if (authLogoutBtn) {
+    authLogoutBtn.addEventListener("click", async () => {
       try {
         await signOutUser();
       } catch (error) {
         console.error("Logout fehlgeschlagen", error);
+      } finally {
+        closeAuthPopover();
       }
     });
   }

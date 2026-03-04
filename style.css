@@ -255,6 +255,43 @@ body {
   gap: 10px;
 }
 
+.header-auth {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.auth-btn {
+  min-width: 72px;
+}
+
+.auth-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 190px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-soft);
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1200;
+}
+
+.auth-popover--visible {
+  display: flex;
+}
+
+.auth-popover-name {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
 .app-subtitle {
   margin: 4px 0 0;
   font-size: 0.9rem;

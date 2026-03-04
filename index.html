@@ -45,6 +45,13 @@
         <button id="openSettingsBtn" class="btn btn--ghost settings-btn" type="button" aria-label="Einstellungen öffnen">
           <i class="fa-solid fa-gear" aria-hidden="true"></i>
         </button>
+        <div id="headerAuth" class="header-auth" aria-live="polite">
+          <button id="headerAuthButton" class="btn btn--ghost auth-btn" type="button">Login</button>
+          <div id="authPopover" class="auth-popover" role="menu" aria-hidden="true">
+            <p id="authPopoverName" class="auth-popover-name"></p>
+            <button id="authLogoutBtn" class="btn btn--ghost btn--small" type="button">Logout</button>
+          </div>
+        </div>
         <div class="standup-inline">
           <span id="standUpTimer" class="standup-timer" style="display: none;"></span>
           <button
@@ -255,21 +262,6 @@
                   </label>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div class="settings-section">
-            <h3>Cloud Sync</h3>
-            <p id="authStatus" class="hint-small">Nicht angemeldet (lokal)</p>
-            <div class="import-export-actions">
-              <button type="button" id="signInBtn" class="btn btn--ghost btn--small">
-                <i class="fa-brands fa-google" aria-hidden="true"></i>
-                Mit Google anmelden
-              </button>
-              <button type="button" id="signOutBtn" class="btn btn--ghost btn--small" style="display:none;">
-                <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-                Abmelden
-              </button>
             </div>
           </div>
 
