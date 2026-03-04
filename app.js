@@ -816,6 +816,12 @@ function playAlertSound() {
   audio.play().catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
 }
 
+function playCountdownSound() {
+  if (document.visibilityState !== "visible") return;
+  const audio = new Audio("countdown.mp3");
+  audio.play().catch((err) => console.warn("Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:", err));
+}
+
 // Timer
 function createTimerId() {
   return `t_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -948,6 +954,14 @@ function startTimer(timerId) {
     const state = getTimerState(timerId);
     if (!state) return;
     const nextRemaining = state.remaining - 1;
+
+    const isSecondaryPhase = state.phase === "secondary"
+      && Number.isFinite(timer.secondaryDurationSeconds)
+      && timer.secondaryDurationSeconds > 0;
+    if (isSecondaryPhase && nextRemaining === 3) {
+      playCountdownSound();
+    }
+
     setTimerState(timerId, { remaining: nextRemaining });
     if (nextRemaining <= 0) {
       handleTimerFinished(timer);
