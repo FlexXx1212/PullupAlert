@@ -636,6 +636,7 @@ body {
 #activeView {
   align-items: stretch;
   overflow: hidden;
+  min-height: 0;
 }
 
 #backToOverview {
@@ -646,14 +647,16 @@ body {
 .active-layout {
   display: flex;
   gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
   flex: 1;
   min-height: 0;
-  margin: 0 0 5% 0;
+  height: 100%;
+  margin: 0;
 }
 
 .active-container {
   min-height: 0;
+  max-height: 100%;
   flex: 1;
   border-radius: var(--radius-xl);
   background: radial-gradient(circle at top, #171c29 0, #0d1019 55%);
