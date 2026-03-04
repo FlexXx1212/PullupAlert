@@ -26,6 +26,16 @@ const persistenceState = {
 let firestoreWriteTimer = null;
 let appIsReady = false;
 
+function setAppLoading(isLoading, message = "") {
+  const overlay = document.getElementById("appLoadingOverlay");
+  const text = document.getElementById("appLoadingText");
+  if (!overlay) return;
+  overlay.classList.toggle("app-loading-overlay--hidden", !isLoading);
+  if (text) {
+    text.textContent = message || "Daten werden geladen…";
+  }
+}
+
 function readLocalRaw(key) {
   try {
     return localStorage.getItem(key);
@@ -171,26 +181,53 @@ async function initializePersistence() {
     });
   }
 
-  onAuthChange(async (user) => {
+  const applyAuthState = async (user) => {
     updateAuthUI(user);
     if (user) {
-      const cloudData = await getUserState(user.uid);
-      persistenceState.mode = "firestore";
-      persistenceState.uid = user.uid;
-      if (cloudData && Object.keys(cloudData).length > 0) {
-        setCacheFromData(cloudData);
-      } else {
-        await saveUserState(user.uid, buildStorageObjectFromCache());
+      setAppLoading(true, "Cloud-Daten werden geladen…");
+      try {
+        const cloudData = await getUserState(user.uid);
+        persistenceState.mode = "firestore";
+        persistenceState.uid = user.uid;
+        if (cloudData && Object.keys(cloudData).length > 0) {
+          setCacheFromData(cloudData);
+        } else {
+          await saveUserState(user.uid, buildStorageObjectFromCache());
+        }
+      } finally {
+        setAppLoading(false);
       }
-    } else {
-      persistenceState.mode = "local";
-      persistenceState.uid = null;
-      persistenceState.cache = loadLocalCache();
+      return;
     }
 
-    if (appIsReady) {
-      await handlePersistenceModeChange();
-    }
+    persistenceState.mode = "local";
+    persistenceState.uid = null;
+    persistenceState.cache = loadLocalCache();
+  };
+
+  await new Promise((resolve) => {
+    let isFirstAuthEvent = true;
+    onAuthChange(async (user) => {
+      try {
+        await applyAuthState(user);
+      } catch (error) {
+        console.error("Auth-Initialisierung fehlgeschlagen", error);
+        persistenceState.mode = "local";
+        persistenceState.uid = null;
+        persistenceState.cache = loadLocalCache();
+        setAppLoading(false);
+      }
+
+      if (isFirstAuthEvent) {
+        isFirstAuthEvent = false;
+        resolve();
+        return;
+      }
+
+      if (appIsReady) {
+        await handlePersistenceModeChange();
+      }
+    });
   });
 }
 

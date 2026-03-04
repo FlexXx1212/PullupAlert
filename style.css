@@ -1439,3 +1439,41 @@ input:checked+.slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+.app-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 12, 16, 0.84);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.app-loading-overlay--hidden {
+  display: none;
+}
+
+.app-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+}
+
+.app-loading-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent);
+  animation: app-loading-spin 0.9s linear infinite;
+}
+
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
