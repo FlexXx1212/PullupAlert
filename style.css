@@ -636,6 +636,7 @@ body {
 #activeView {
   align-items: stretch;
   overflow: hidden;
+  min-height: 0;
 }
 
 #backToOverview {
@@ -647,12 +648,15 @@ body {
   display: flex;
   gap: 24px;
   align-items: flex-start;
-  min-height: -webkit-fill-available;
-  margin: 0 0 5% 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
 }
 
 .active-container {
-  min-height: -webkit-fill-available;
+  min-height: 0;
+  max-height: 100%;
   flex: 1;
   border-radius: var(--radius-xl);
   background: radial-gradient(circle at top, #171c29 0, #0d1019 55%);
@@ -697,9 +701,34 @@ body {
 
 .active-body {
   flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow-y: scroll;
+  scrollbar-color: rgba(63, 208, 255, 0.6) rgba(15, 23, 36, 0.7);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable both-edges;
+  padding-right: 6px;
+}
+
+.active-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.active-body::-webkit-scrollbar-track {
+  background: rgba(15, 23, 36, 0.7);
+  border-radius: 999px;
+}
+
+.active-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3fd0ff, #0099ff);
+  border-radius: 999px;
+  border: 2px solid rgba(15, 23, 36, 0.7);
+}
+
+.active-body::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #63ddff, #1aa7ff);
 }
 
 .exercise-list {
@@ -707,9 +736,11 @@ body {
   margin: 0;
   padding: 0;
   max-width: 100%;
+  width: 100%;
   text-align: left;
   font-size: clamp(var(--exercise-font-min, 1.3rem), var(--exercise-font-vw, 3vw), var(--exercise-font-max, 2.1rem));
   line-height: var(--exercise-line-height, 1.5);
+  overflow-wrap: anywhere;
 }
 
 .exercise-list li {
