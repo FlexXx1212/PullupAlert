@@ -705,10 +705,9 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  overflow-y: scroll;
+  overflow-y: auto;
   scrollbar-color: rgba(63, 208, 255, 0.6) rgba(15, 23, 36, 0.7);
   scrollbar-width: thin;
-  scrollbar-gutter: stable both-edges;
   padding-right: 6px;
 }
 
