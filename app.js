@@ -912,14 +912,19 @@ function sendTimerNotification(timer) {
 }
 
 function handleTimerFinished(timer) {
-  playAlertSound();
+  const state = getTimerState(timer.id);
+  const hasSecondaryPhase = Number.isFinite(timer.secondaryDurationSeconds) && timer.secondaryDurationSeconds > 0;
+  const isSecondaryPhase = hasSecondaryPhase && state?.phase === "secondary";
+
+  if (!isSecondaryPhase) {
+    playAlertSound();
+  }
+
   if (!timer.repeating) {
     sendTimerNotification(timer);
     stopTimer(timer.id, { reset: true });
     return;
   }
-  const state = getTimerState(timer.id);
-  const hasSecondaryPhase = Number.isFinite(timer.secondaryDurationSeconds) && timer.secondaryDurationSeconds > 0;
 
   if (!hasSecondaryPhase) {
     resetTimer(timer.id);
