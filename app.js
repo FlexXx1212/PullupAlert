@@ -1,3 +1,5 @@
+import { getUserState, onAuthChange, saveUserState, signInWithGoogle, signOutUser } from "./firebase.js";
+
 // Konstanten für Settings-Storage
 const SETTINGS_KEY = "pullup-alert-settings";
 const WORKOUTS_KEY = "pullup-alert-workouts"; // Neuer Key für Workouts
@@ -14,6 +16,183 @@ const EXPORTABLE_STORAGE_KEYS = [
   STANDUP_SETTINGS_KEY,
   STANDUP_STATE_KEY
 ];
+
+const persistenceState = {
+  mode: "local",
+  uid: null,
+  cache: {}
+};
+
+let firestoreWriteTimer = null;
+let appIsReady = false;
+
+function readLocalRaw(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function loadLocalCache() {
+  const cache = {};
+  EXPORTABLE_STORAGE_KEYS.forEach((key) => {
+    const raw = readLocalRaw(key);
+    if (raw !== null) {
+      cache[key] = raw;
+    }
+  });
+  return cache;
+}
+
+function setCacheFromData(data) {
+  const nextCache = {};
+  EXPORTABLE_STORAGE_KEYS.forEach((key) => {
+    if (!(key in (data || {}))) return;
+    nextCache[key] = JSON.stringify(data[key]);
+  });
+  persistenceState.cache = nextCache;
+}
+
+function getStorageRaw(key) {
+  return key in persistenceState.cache ? persistenceState.cache[key] : null;
+}
+
+function buildStorageObjectFromCache() {
+  const data = {};
+  EXPORTABLE_STORAGE_KEYS.forEach((key) => {
+    const raw = getStorageRaw(key);
+    if (raw === null) return;
+    try {
+      data[key] = JSON.parse(raw);
+    } catch {
+      data[key] = raw;
+    }
+  });
+  return data;
+}
+
+function scheduleFirestoreWrite() {
+  if (persistenceState.mode !== "firestore" || !persistenceState.uid) return;
+  window.clearTimeout(firestoreWriteTimer);
+  firestoreWriteTimer = window.setTimeout(async () => {
+    try {
+      await saveUserState(persistenceState.uid, buildStorageObjectFromCache());
+    } catch (error) {
+      console.error("Firestore-Speicherung fehlgeschlagen", error);
+    }
+  }, 500);
+}
+
+function setStorageRaw(key, rawValue) {
+  if (rawValue === null) {
+    delete persistenceState.cache[key];
+  } else {
+    persistenceState.cache[key] = rawValue;
+  }
+
+  if (persistenceState.mode === "local") {
+    if (rawValue === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, rawValue);
+    }
+    return;
+  }
+
+  scheduleFirestoreWrite();
+}
+
+function setStorageJson(key, value) {
+  if (value === undefined) {
+    setStorageRaw(key, null);
+    return;
+  }
+  setStorageRaw(key, JSON.stringify(value));
+}
+
+async function overwriteStorageData(data) {
+  setCacheFromData(data);
+  if (persistenceState.mode === "local") {
+    EXPORTABLE_STORAGE_KEYS.forEach((key) => {
+      const raw = getStorageRaw(key);
+      if (raw === null) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, raw);
+      }
+    });
+    return;
+  }
+  await saveUserState(persistenceState.uid, buildStorageObjectFromCache());
+}
+
+async function handlePersistenceModeChange() {
+  await loadWorkouts();
+  renderOverview();
+  window.exerciseVariables = getExerciseVariables();
+  renderExerciseVariablesSettings();
+  updateExerciseVariablePrefixList();
+  renderCategorySettings();
+}
+
+function updateAuthUI(user) {
+  const signInBtn = document.getElementById("signInBtn");
+  const signOutBtn = document.getElementById("signOutBtn");
+  const authStatus = document.getElementById("authStatus");
+  if (!signInBtn || !signOutBtn || !authStatus) return;
+  const isLoggedIn = Boolean(user);
+  signInBtn.style.display = isLoggedIn ? "none" : "inline-flex";
+  signOutBtn.style.display = isLoggedIn ? "inline-flex" : "none";
+  authStatus.textContent = isLoggedIn ? `Angemeldet: ${user.displayName || user.email || user.uid}` : "Nicht angemeldet (lokal)";
+}
+
+async function initializePersistence() {
+  persistenceState.cache = loadLocalCache();
+
+  const signInBtn = document.getElementById("signInBtn");
+  const signOutBtn = document.getElementById("signOutBtn");
+  if (signInBtn) {
+    signInBtn.addEventListener("click", async () => {
+      try {
+        await signInWithGoogle();
+      } catch (error) {
+        console.error("Google Login fehlgeschlagen", error);
+      }
+    });
+  }
+  if (signOutBtn) {
+    signOutBtn.addEventListener("click", async () => {
+      try {
+        await signOutUser();
+      } catch (error) {
+        console.error("Logout fehlgeschlagen", error);
+      }
+    });
+  }
+
+  onAuthChange(async (user) => {
+    updateAuthUI(user);
+    if (user) {
+      const cloudData = await getUserState(user.uid);
+      persistenceState.mode = "firestore";
+      persistenceState.uid = user.uid;
+      if (cloudData && Object.keys(cloudData).length > 0) {
+        setCacheFromData(cloudData);
+      } else {
+        await saveUserState(user.uid, buildStorageObjectFromCache());
+      }
+    } else {
+      persistenceState.mode = "local";
+      persistenceState.uid = null;
+      persistenceState.cache = loadLocalCache();
+    }
+
+    if (appIsReady) {
+      await handlePersistenceModeChange();
+    }
+  });
+}
 
 const DEFAULT_EXERCISE_VARIABLES = [
   { name: "Pullups", prefix: "PULL", sets: 2, reps: 3 },
@@ -74,7 +253,7 @@ function isCategoryHidden(categoryId) {
 // Settings laden/speichern
 function loadSettings() {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = getStorageRaw(SETTINGS_KEY);
     if (!raw) return {};
     return JSON.parse(raw);
   } catch {
@@ -84,7 +263,7 @@ function loadSettings() {
 
 function saveSettings(settings) {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    setStorageJson(SETTINGS_KEY, settings);
   } catch { }
 }
 
@@ -381,7 +560,7 @@ function updateActiveRepeatingLabel() {
 
 function loadCompletions() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = getStorageRaw(STORAGE_KEY);
     if (!raw) return {};
     return JSON.parse(raw);
   } catch (e) {
@@ -392,7 +571,7 @@ function loadCompletions() {
 
 function saveCompletions(completions) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(completions));
+    setStorageJson(STORAGE_KEY, completions);
   } catch (e) {
     console.error("Fehler beim Speichern in localStorage", e);
   }
@@ -400,7 +579,7 @@ function saveCompletions(completions) {
 
 function loadRepeatingCompletionCounts() {
   try {
-    const raw = localStorage.getItem(REPEATING_COMPLETION_COUNTS_KEY);
+    const raw = getStorageRaw(REPEATING_COMPLETION_COUNTS_KEY);
     if (!raw) return {};
     return JSON.parse(raw);
   } catch (e) {
@@ -411,7 +590,7 @@ function loadRepeatingCompletionCounts() {
 
 function saveRepeatingCompletionCounts(completionCounts) {
   try {
-    localStorage.setItem(REPEATING_COMPLETION_COUNTS_KEY, JSON.stringify(completionCounts));
+    setStorageJson(REPEATING_COMPLETION_COUNTS_KEY, completionCounts);
   } catch (e) {
     console.error("Fehler beim Speichern der Wiederholungszähler", e);
   }
@@ -776,7 +955,7 @@ function updateTimerCards() {
 // Workouts laden (localStorage > JSON)
 async function loadWorkouts() {
   // 1. Versuche aus localStorage zu laden
-  const localRaw = localStorage.getItem(WORKOUTS_KEY);
+  const localRaw = getStorageRaw(WORKOUTS_KEY);
   let dataWorkouts = [];
   let dataExerciseVariables = DEFAULT_EXERCISE_VARIABLES;
 
@@ -921,7 +1100,7 @@ function saveWorkoutsToStorage(workoutsData) {
     repeatIntervalMinutes: normalizeRepeatInterval(w.repeatIntervalMinutes),
     nextDueAt: w.nextDueAt instanceof Date ? w.nextDueAt.getTime() : (w.nextDueAt ?? null)
   }));
-  localStorage.setItem(WORKOUTS_KEY, JSON.stringify({ workouts: cleanWorkouts }));
+  setStorageJson(WORKOUTS_KEY, { workouts: cleanWorkouts });
 }
 
 // CRUD
@@ -1498,7 +1677,7 @@ function closeSettingsModal() {
 function collectExportData() {
   const data = {};
   EXPORTABLE_STORAGE_KEYS.forEach((key) => {
-    const rawValue = localStorage.getItem(key);
+    const rawValue = getStorageRaw(key);
     if (rawValue === null) return;
     try {
       data[key] = JSON.parse(rawValue);
@@ -1532,23 +1711,16 @@ function importAllDataFromFile(file) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const parsed = JSON.parse(reader.result?.toString() || "{}");
       if (!parsed || typeof parsed !== "object" || typeof parsed.data !== "object") {
         throw new Error("Ungültiges Backup-Format.");
       }
 
-      EXPORTABLE_STORAGE_KEYS.forEach((key) => {
-        if (!(key in parsed.data)) {
-          localStorage.removeItem(key);
-          return;
-        }
-        localStorage.setItem(key, JSON.stringify(parsed.data[key]));
-      });
-
-      alert("Import erfolgreich. Die App wird neu geladen.");
-      window.location.reload();
+      await overwriteStorageData(parsed.data);
+      await handlePersistenceModeChange();
+      alert("Import erfolgreich.");
     } catch (error) {
       console.error("Import fehlgeschlagen", error);
       alert("Import fehlgeschlagen. Bitte eine gültige JSON-Datei wählen.");
@@ -2105,6 +2277,7 @@ function setupEventListeners() {
 
 // Initialisierung
 async function initApp() {
+  await initializePersistence();
   await loadWorkouts();
   renderOverview();
   setupEventListeners();
@@ -2122,6 +2295,7 @@ async function initApp() {
 
   // Stand Up Alert Logic starten
   initStandUpLogic();
+  appIsReady = true;
 }
 
 document.addEventListener("DOMContentLoaded", initApp);
@@ -2147,7 +2321,7 @@ let standUpState = {
 
 function loadStandUpSettings() {
   try {
-    const raw = localStorage.getItem(STANDUP_SETTINGS_KEY);
+    const raw = getStorageRaw(STANDUP_SETTINGS_KEY);
     if (raw) {
       standUpSettings = { ...standUpSettings, ...JSON.parse(raw) };
     }
@@ -2155,12 +2329,12 @@ function loadStandUpSettings() {
 }
 
 function saveStandUpSettings() {
-  localStorage.setItem(STANDUP_SETTINGS_KEY, JSON.stringify(standUpSettings));
+  setStorageJson(STANDUP_SETTINGS_KEY, standUpSettings);
 }
 
 function loadStandUpState() {
   try {
-    const raw = localStorage.getItem(STANDUP_STATE_KEY);
+    const raw = getStorageRaw(STANDUP_STATE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       standUpState = parsed;
@@ -2170,7 +2344,7 @@ function loadStandUpState() {
 }
 
 function saveStandUpState() {
-  localStorage.setItem(STANDUP_STATE_KEY, JSON.stringify(standUpState));
+  setStorageJson(STANDUP_STATE_KEY, standUpState);
 }
 
 function getRandomMinutes(min, max) {
