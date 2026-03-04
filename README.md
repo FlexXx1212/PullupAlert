@@ -1,4 +1,4 @@
-# Pullup Alert – Klimmzug-Routine SPA
+# Kinovo – Klimmzug-Routine SPA
 
 Single Page App als Reminder und Übungsanzeige für tägliche Klimmzug-Einheiten
 

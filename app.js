@@ -478,11 +478,11 @@ function createExerciseLineElement(text, variableMap, tagName = "li") {
   return item;
 }
 
-// Pullup Alert – SPA-Logik
+// Kinovo – SPA-Logik
 // - Workouts & Zeiten werden jetzt primär aus localStorage geladen
 // - Abschluss-Status wird pro Tag in localStorage gespeichert
 
-const BASE_TITLE = "Pullup Alert";
+const BASE_TITLE = "Kinovo";
 const REMINDER_INTERVAL_MINUTES = 30;
 const DEFAULT_TIMER_DURATION_SECONDS = 75;
 const DEFAULT_REPEAT_INTERVAL_MINUTES = 90;
