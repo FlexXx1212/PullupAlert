@@ -1070,7 +1070,7 @@ body {
 
 .timer-row-fields {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto auto;
+  grid-template-columns: minmax(140px, 1fr) auto auto auto;
   gap: 10px;
   align-items: center;
   width: 100%;
@@ -1100,6 +1100,10 @@ body {
   gap: 6px;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+.timer-secondary-seconds-label--hidden {
+  visibility: hidden;
 }
 
 .timer-remove {
