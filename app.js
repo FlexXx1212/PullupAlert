@@ -509,6 +509,7 @@ let blinkIntervalId = null;
 let isBlinking = false;
 let activeTimerId = null;
 let timerStateById = {};
+let activeTimerAudios = new Set();
 let allowTimerControls = false;
 let activeDate = startOfDay(new Date());
 let lastRepeatingLabelRefreshAt = 0;
@@ -810,15 +811,39 @@ function stopTitleBlink() {
 }
 
 // Audio
+function trackTimerAudio(audio) {
+  activeTimerAudios.add(audio);
+  audio.addEventListener("ended", () => activeTimerAudios.delete(audio), { once: true });
+  audio.addEventListener("pause", () => {
+    if (audio.ended) {
+      activeTimerAudios.delete(audio);
+    }
+  });
+}
+
+function stopTimerAudio() {
+  activeTimerAudios.forEach((audio) => {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch (err) {
+      console.warn("Audio konnte nicht gestoppt werden:", err);
+    }
+  });
+  activeTimerAudios.clear();
+}
+
 function playAlertSound() {
   if (document.visibilityState !== "visible") return;
   const audio = new Audio("alert.mp3"); // Dynamisch erstellen, da kein HTML-Tag mehr nötig
+  trackTimerAudio(audio);
   audio.play().catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
 }
 
 function playCountdownSound() {
   if (document.visibilityState !== "visible") return;
   const audio = new Audio("countdown.mp3");
+  trackTimerAudio(audio);
   audio.play().catch((err) => console.warn("Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:", err));
 }
 
@@ -883,6 +908,7 @@ function resetTimer(timerId) {
 
 function stopTimer(timerId, { reset = true } = {}) {
   clearActiveTimerInterval();
+  stopTimerAudio();
   const state = getTimerState(timerId);
   if (!state) return;
   setTimerState(timerId, { isRunning: false });
