@@ -780,6 +780,10 @@ function showView(viewId) {
   view.classList.add("view--active");
 }
 
+function isWorkoutViewOpen() {
+  return document.getElementById("activeView")?.classList.contains("view--active");
+}
+
 function updateCurrentTimeDisplay() {
   const el = $("#currentTime");
   if (!el) return;
@@ -1602,11 +1606,13 @@ function setupReminderTicker() {
           needsRerender = true;
         }
         if (!w.alertedInitially && now >= w.nextDueAt) {
+          if (isWorkoutViewOpen()) return;
           w.alertedInitially = true;
           w.nextReminderAt = new Date(w.nextDueAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
           triggerWorkoutAlert(w, false);
           needsRerender = true;
         } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
+          if (isWorkoutViewOpen()) return;
           triggerWorkoutAlert(w, true);
           while (w.nextReminderAt <= now) {
             w.nextReminderAt = new Date(w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
@@ -1614,11 +1620,13 @@ function setupReminderTicker() {
         }
       } else if (w.dateTime) {
         if (!w.alertedInitially && now >= w.dateTime) {
+          if (isWorkoutViewOpen()) return;
           w.alertedInitially = true;
           w.nextReminderAt = new Date(w.dateTime.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
           triggerWorkoutAlert(w, false);
           needsRerender = true;
         } else if (w.alertedInitially && w.nextReminderAt && now >= w.nextReminderAt) {
+          if (isWorkoutViewOpen()) return;
           triggerWorkoutAlert(w, true);
           while (w.nextReminderAt <= now) {
             w.nextReminderAt = new Date(w.nextReminderAt.getTime() + REMINDER_INTERVAL_MINUTES * 60 * 1000);
@@ -1638,9 +1646,11 @@ function setupReminderTicker() {
 }
 
 function triggerWorkoutAlert(workout, isReminder) {
+  if (isWorkoutViewOpen()) return false;
   playAlertSound();
   startTitleBlink();
   sendWorkoutNotification(workout, isReminder);
+  return true;
 }
 
 // ---- MODAL LOGIC ----
