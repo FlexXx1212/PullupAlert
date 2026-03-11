@@ -2375,7 +2375,7 @@ function setupEventListeners() {
       return;
     }
 
-    if (!isActiveViewVisible() || !allowTimerControls) return;
+    if (!isWorkoutViewOpen() || !allowTimerControls) return;
     if (event.key === "ArrowUp") {
       event.preventDefault();
       setAdjacentActiveTimer(-1);
