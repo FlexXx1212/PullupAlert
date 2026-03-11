@@ -837,16 +837,21 @@ function stopTimerAudio() {
   activeTimerAudios.clear();
 }
 
-function playAlertSound() {
-  const audio = new Audio("alert.mp3"); // Dynamisch erstellen, da kein HTML-Tag mehr nötig
+function playTrackedAudio(src, warningMessage) {
+  const audio = new Audio(src);
   trackTimerAudio(audio);
-  audio.play().catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
+  audio.play().catch((err) => {
+    if (err?.name === "AbortError") return;
+    console.warn(warningMessage, err);
+  });
+}
+
+function playAlertSound() {
+  playTrackedAudio("alert.mp3", "Audio konnte evtl. nicht automatisch abgespielt werden:");
 }
 
 function playCountdownSound() {
-  const audio = new Audio("countdown.mp3");
-  trackTimerAudio(audio);
-  audio.play().catch((err) => console.warn("Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:", err));
+  playTrackedAudio("countdown.mp3", "Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:");
 }
 
 // Timer
@@ -908,9 +913,11 @@ function resetTimer(timerId) {
   });
 }
 
-function stopTimer(timerId, { reset = true } = {}) {
+function stopTimer(timerId, { reset = true, stopAudio = true } = {}) {
   clearActiveTimerInterval();
-  stopTimerAudio();
+  if (stopAudio) {
+    stopTimerAudio();
+  }
   const state = getTimerState(timerId);
   if (!state) return;
   setTimerState(timerId, { isRunning: false });
@@ -959,7 +966,7 @@ function handleTimerFinished(timer) {
     }
 
     sendTimerNotification(timer);
-    stopTimer(timer.id, { reset: true });
+    stopTimer(timer.id, { reset: true, stopAudio: false });
     return;
   }
 
