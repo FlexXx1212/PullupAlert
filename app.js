@@ -838,14 +838,12 @@ function stopTimerAudio() {
 }
 
 function playAlertSound() {
-  if (document.visibilityState !== "visible") return;
   const audio = new Audio("alert.mp3"); // Dynamisch erstellen, da kein HTML-Tag mehr nötig
   trackTimerAudio(audio);
   audio.play().catch((err) => console.warn("Audio konnte evtl. nicht automatisch abgespielt werden:", err));
 }
 
 function playCountdownSound() {
-  if (document.visibilityState !== "visible") return;
   const audio = new Audio("countdown.mp3");
   trackTimerAudio(audio);
   audio.play().catch((err) => console.warn("Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:", err));
