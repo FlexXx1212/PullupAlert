@@ -1029,6 +1029,16 @@ function setActiveTimer(timerId) {
   updateTimerCards();
 }
 
+function setAdjacentActiveTimer(direction) {
+  if (!currentWorkout?.timers?.length || !activeTimerId) return;
+  const timerIds = currentWorkout.timers.map((timer) => timer.id);
+  const currentIndex = timerIds.indexOf(activeTimerId);
+  if (currentIndex === -1) return;
+
+  const nextIndex = (currentIndex + direction + timerIds.length) % timerIds.length;
+  setActiveTimer(timerIds[nextIndex]);
+}
+
 function initializeTimerState(workout) {
   timerStateById = {};
   (workout.timers || []).forEach(timer => {
@@ -2350,8 +2360,6 @@ function setupEventListeners() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.code !== "Space") return;
-
     const target = event.target;
     const isTypingField = target instanceof HTMLElement && (
       target.isContentEditable ||
@@ -2360,9 +2368,23 @@ function setupEventListeners() {
 
     if (isTypingField) return;
 
-    event.preventDefault();
-    if (!allowTimerControls) return;
-    toggleActiveTimer();
+    if (event.code === "Space") {
+      event.preventDefault();
+      if (!allowTimerControls) return;
+      toggleActiveTimer();
+      return;
+    }
+
+    if (!isActiveViewVisible() || !allowTimerControls) return;
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setAdjacentActiveTimer(-1);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setAdjacentActiveTimer(1);
+    }
   });
 
   // Modal Events
