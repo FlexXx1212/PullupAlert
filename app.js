@@ -908,9 +908,11 @@ function resetTimer(timerId) {
   });
 }
 
-function stopTimer(timerId, { reset = true } = {}) {
+function stopTimer(timerId, { reset = true, stopAudio = true } = {}) {
   clearActiveTimerInterval();
-  stopTimerAudio();
+  if (stopAudio) {
+    stopTimerAudio();
+  }
   const state = getTimerState(timerId);
   if (!state) return;
   setTimerState(timerId, { isRunning: false });
@@ -959,7 +961,7 @@ function handleTimerFinished(timer) {
     }
 
     sendTimerNotification(timer);
-    stopTimer(timer.id, { reset: true });
+    stopTimer(timer.id, { reset: true, stopAudio: false });
     return;
   }
 
