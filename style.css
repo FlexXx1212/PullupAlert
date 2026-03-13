@@ -780,6 +780,58 @@ body {
   text-underline-offset: 2px;
 }
 
+.exercise-adjustable-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  border-radius: 8px;
+  padding: 0 2px;
+}
+
+.exercise-adjustable-number__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-2px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.exercise-adjustable-number:hover .exercise-adjustable-number__controls,
+.exercise-adjustable-number:focus-within .exercise-adjustable-number__controls {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.exercise-adjustable-number__btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(63, 208, 255, 0.45);
+  background: rgba(10, 16, 28, 0.95);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.exercise-adjustable-number__btn:hover {
+  background: rgba(63, 208, 255, 0.18);
+}
+
+.exercise-adjustable-number__original {
+  opacity: 0.85;
+}
+
+.exercise-adjustable-number__new {
+  color: #6dffb0;
+  font-weight: 700;
+}
+
 /* Timer & Footer */
 
 .active-footer {

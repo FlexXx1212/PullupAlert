@@ -459,6 +459,7 @@ function parseExerciseLine(text, variableMap) {
   }
   return {
     type,
+    content,
     html: applyInlineFormatting(content)
   };
 }
@@ -476,6 +477,140 @@ function createExerciseLineElement(text, variableMap, tagName = "li") {
   }
   item.innerHTML = parsed.html;
   return item;
+}
+
+function parseAdjustableNumberMarkers(content) {
+  const markers = [];
+  const placeholderText = content.replace(/\{(-?\d+)\}/g, (match, value) => {
+    const index = markers.length;
+    markers.push({ index, value: parseInt(value, 10) });
+    return `%%ADJ${index}%%`;
+  });
+  return { placeholderText, markers };
+}
+
+function getAdjustmentKey(lineIndex, markerIndex) {
+  return `${lineIndex}:${markerIndex}`;
+}
+
+function getAdjustedValue(lineIndex, markerIndex, originalValue) {
+  const key = getAdjustmentKey(lineIndex, markerIndex);
+  return pendingExerciseNumberAdjustments[key]?.currentValue ?? originalValue;
+}
+
+function buildAdjustableNumberElement(lineIndex, markerIndex, originalValue) {
+  const wrapper = document.createElement("span");
+  wrapper.className = "exercise-adjustable-number";
+  wrapper.dataset.lineIndex = String(lineIndex);
+  wrapper.dataset.markerIndex = String(markerIndex);
+
+  const value = getAdjustedValue(lineIndex, markerIndex, originalValue);
+  const valueLabel = document.createElement("span");
+  valueLabel.className = "exercise-adjustable-number__value";
+  if (value !== originalValue) {
+    valueLabel.innerHTML = `<span class="exercise-adjustable-number__original">${originalValue}</span><span class="exercise-adjustable-number__new"> (${value})</span>`;
+  } else {
+    valueLabel.textContent = String(originalValue);
+  }
+
+  const controls = document.createElement("span");
+  controls.className = "exercise-adjustable-number__controls";
+  controls.innerHTML = `
+    <button type="button" class="exercise-adjustable-number__btn" data-adjust-action="decrease" aria-label="Wert verringern">−</button>
+    <button type="button" class="exercise-adjustable-number__btn" data-adjust-action="increase" aria-label="Wert erhöhen">+</button>
+  `;
+  wrapper.appendChild(valueLabel);
+  wrapper.appendChild(controls);
+  return wrapper;
+}
+
+function appendHtmlWithAdjustableMarkers(container, html, markers, lineIndex) {
+  const parts = html.split(/(%%ADJ\d+%%)/g).filter(Boolean);
+  parts.forEach((part) => {
+    const markerMatch = part.match(/^%%ADJ(\d+)%%$/);
+    if (markerMatch) {
+      const markerIndex = parseInt(markerMatch[1], 10);
+      const marker = markers.find((entry) => entry.index === markerIndex);
+      if (marker) {
+        container.appendChild(buildAdjustableNumberElement(lineIndex, markerIndex, marker.value));
+      }
+      return;
+    }
+    const template = document.createElement("template");
+    template.innerHTML = part;
+    container.appendChild(template.content.cloneNode(true));
+  });
+}
+
+function createActiveExerciseLineElement(text, variableMap, lineIndex, tagName = "li") {
+  const parsed = parseExerciseLine(text, variableMap);
+  if (!parsed) return null;
+  const item = document.createElement(tagName);
+  item.className = "exercise-item";
+  if (parsed.type === "bullet") item.classList.add("exercise-item--bullet");
+  if (parsed.type === "heading") item.classList.add("exercise-item--heading");
+
+  const { placeholderText, markers } = parseAdjustableNumberMarkers(parsed.content);
+  const formatted = applyInlineFormatting(placeholderText);
+  if (!markers.length) {
+    item.innerHTML = formatted;
+    return item;
+  }
+  appendHtmlWithAdjustableMarkers(item, formatted, markers, lineIndex);
+  return item;
+}
+
+function applyPendingExerciseAdjustments(workout) {
+  if (!workout || !Object.keys(pendingExerciseNumberAdjustments).length) return false;
+  let changed = false;
+  workout.exercises = (workout.exercises || []).map((line, lineIndex) => {
+    let markerIndex = 0;
+    return line.replace(/\{(-?\d+)\}/g, (match) => {
+      const key = getAdjustmentKey(lineIndex, markerIndex);
+      const entry = pendingExerciseNumberAdjustments[key];
+      markerIndex += 1;
+      if (!entry || entry.currentValue === entry.originalValue) return match;
+      changed = true;
+      return `{${entry.currentValue}}`;
+    });
+  });
+  if (changed) {
+    pendingExerciseNumberAdjustments = {};
+  }
+  return changed;
+}
+
+function handleExerciseNumberAdjustmentClick(event) {
+  const button = event.target.closest("[data-adjust-action]");
+  if (!button || !currentWorkout) return;
+  event.preventDefault();
+  const wrapper = button.closest(".exercise-adjustable-number");
+  if (!wrapper) return;
+
+  const lineIndex = parseInt(wrapper.dataset.lineIndex, 10);
+  const markerIndex = parseInt(wrapper.dataset.markerIndex, 10);
+  const line = resolveExerciseText(currentWorkout.exercises?.[lineIndex] || "", buildExerciseVariableMap(window.exerciseVariables));
+  const marker = parseAdjustableNumberMarkers(line).markers.find((entry) => entry.index === markerIndex);
+  if (!marker) return;
+
+  const key = getAdjustmentKey(lineIndex, markerIndex);
+  const next = pendingExerciseNumberAdjustments[key] || {
+    originalValue: marker.value,
+    currentValue: marker.value
+  };
+
+  if (button.dataset.adjustAction === "increase") {
+    next.currentValue += 1;
+  } else {
+    next.currentValue = Math.max(0, next.currentValue - 1);
+  }
+
+  if (next.currentValue === next.originalValue) {
+    delete pendingExerciseNumberAdjustments[key];
+  } else {
+    pendingExerciseNumberAdjustments[key] = next;
+  }
+  renderActiveWorkoutExercises(currentWorkout);
 }
 
 // Kinovo – SPA-Logik
@@ -513,6 +648,7 @@ let activeTimerAudios = new Set();
 let allowTimerControls = false;
 let activeDate = startOfDay(new Date());
 let lastRepeatingLabelRefreshAt = 0;
+let pendingExerciseNumberAdjustments = {};
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -1479,6 +1615,18 @@ function renderOverview() {
   });
 }
 
+function renderActiveWorkoutExercises(workout) {
+  const list = $("#activeExercises");
+  if (!list || !workout) return;
+  list.innerHTML = "";
+  const variableMap = buildExerciseVariableMap(window.exerciseVariables);
+  (workout.exercises || []).forEach((text, lineIndex) => {
+    const item = createActiveExerciseLineElement(text, variableMap, lineIndex, "li");
+    if (item) list.appendChild(item);
+  });
+  updateExerciseListSizing(list, list.children.length);
+}
+
 // Aktives Workout anzeigen
 function showActiveWorkout(workout) {
   stopActiveTimer({ reset: true });
@@ -1499,15 +1647,7 @@ function showActiveWorkout(workout) {
     activeDateLabel.classList.toggle("active-date--off", !isViewingToday());
   }
 
-  const list = $("#activeExercises");
-  list.innerHTML = "";
-
-  const variableMap = buildExerciseVariableMap(window.exerciseVariables);
-  (workout.exercises || []).forEach((text) => {
-    const item = createExerciseLineElement(text, variableMap, "li");
-    if (item) list.appendChild(item);
-  });
-  updateExerciseListSizing(list, list.children.length);
+  renderActiveWorkoutExercises(workout);
 
   const footer = document.querySelector('.active-footer');
   const container = document.querySelector('.active-container');
@@ -1549,6 +1689,11 @@ function updateExerciseListSizing(list, count) {
 
 function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
+  const workoutDefinition = workouts.find((workout) => workout.id === currentWorkout.id) || currentWorkout;
+  const adjusted = applyPendingExerciseAdjustments(workoutDefinition);
+  if (adjusted) {
+    saveWorkoutsToStorage(workouts);
+  }
   const isRepeating = isRepeatingWorkout(currentWorkout);
   if (isRepeating) {
     incrementRepeatingCompletionCount(currentWorkout.id, activeDate);
@@ -2349,6 +2494,7 @@ function setupEventListeners() {
       const workoutId = target.dataset.workoutId;
       const workout = workouts.find((w) => w.id === workoutId);
       if (workout) {
+        pendingExerciseNumberAdjustments = {};
         showActiveWorkout(workout);
       }
     }
@@ -2357,6 +2503,7 @@ function setupEventListeners() {
   $("#backToOverview").addEventListener("click", () => {
     stopActiveTimer({ reset: true });
     allowTimerControls = false;
+    pendingExerciseNumberAdjustments = {};
     showView("overviewView");
     stopTitleBlink();
     document.title = BASE_TITLE;
@@ -2365,6 +2512,11 @@ function setupEventListeners() {
   $("#completeButton").addEventListener("click", () => {
     markCurrentWorkoutCompleted();
   });
+
+  const activeExercises = $("#activeExercises");
+  if (activeExercises) {
+    activeExercises.addEventListener("click", handleExerciseNumberAdjustmentClick);
+  }
 
   document.addEventListener("keydown", (event) => {
     const target = event.target;
