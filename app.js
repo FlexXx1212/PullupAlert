@@ -647,6 +647,7 @@ let timerStateById = {};
 let activeTimerAudios = new Set();
 let allowTimerControls = false;
 let activeDate = startOfDay(new Date());
+let lastKnownTodayKey = getTodayKey();
 let lastRepeatingLabelRefreshAt = 0;
 let pendingExerciseNumberAdjustments = {};
 
@@ -891,6 +892,24 @@ function setActiveDate(newDate) {
   if (isActiveViewVisible && currentWorkout) {
     showActiveWorkout(currentWorkout);
   }
+}
+
+function syncDateBoundaryState(now = new Date()) {
+  const todayKey = getDateKey(now);
+  if (todayKey === lastKnownTodayKey) {
+    return { dayChanged: false, activeDateUpdated: false };
+  }
+
+  const wasViewingTodayBeforeBoundary = getDateKey(activeDate) === lastKnownTodayKey;
+  lastKnownTodayKey = todayKey;
+  if (wasViewingTodayBeforeBoundary) {
+    activeDate = startOfDay(now);
+    updateDateNavUI();
+    return { dayChanged: true, activeDateUpdated: true };
+  }
+
+  updateDateNavUI();
+  return { dayChanged: true, activeDateUpdated: false };
 }
 
 function changeActiveDateBy(days) {
@@ -1724,10 +1743,11 @@ function setupReminderTicker() {
   setInterval(() => {
     updateCurrentTimeDisplay();
     const now = new Date();
+    const { activeDateUpdated } = syncDateBoundaryState(now);
     const todayKey = getTodayKey();
     const todayDayIndex = now.getDay();
     const shouldRefreshRepeatingLabels = now.getTime() - lastRepeatingLabelRefreshAt >= REPEATING_LABEL_REFRESH_MS;
-    let needsRerender = false;
+    let needsRerender = activeDateUpdated;
 
     workouts.forEach((w) => {
       if (w.lastDayKey !== todayKey) {
@@ -1803,6 +1823,24 @@ function setupReminderTicker() {
     }
     if (needsRerender) renderOverview();
   }, 1000);
+}
+
+function setupResumeRefreshListeners() {
+  const handleResume = () => {
+    const now = new Date();
+    const { dayChanged } = syncDateBoundaryState(now);
+    if (dayChanged) {
+      renderOverview();
+    }
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      handleResume();
+    }
+  });
+  window.addEventListener("focus", handleResume);
+  window.addEventListener("pageshow", handleResume);
 }
 
 function triggerWorkoutAlert(workout, isReminder) {
@@ -2643,6 +2681,7 @@ async function initApp() {
   renderCategorySettings();
 
   setupReminderTicker();
+  setupResumeRefreshListeners();
   updateCurrentTimeDisplay();
   document.title = BASE_TITLE;
   requestNotificationPermission();
