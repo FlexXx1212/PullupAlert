@@ -903,8 +903,7 @@ function syncDateBoundaryState(now = new Date()) {
   const wasViewingTodayBeforeBoundary = getDateKey(activeDate) === lastKnownTodayKey;
   lastKnownTodayKey = todayKey;
   if (wasViewingTodayBeforeBoundary) {
-    activeDate = startOfDay(now);
-    updateDateNavUI();
+    setActiveDate(startOfDay(now));
     return { dayChanged: true, activeDateUpdated: true };
   }
 
