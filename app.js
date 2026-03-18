@@ -1064,7 +1064,7 @@ function stopMediaKeySilentAudioPlayback() {
 function updateMediaKeyActionHandlers() {
   if (!("mediaSession" in navigator)) return;
   const enabled = isMediaKeyTimerEnabled();
-  const canControl = enabled && isWorkoutViewOpen() && allowTimerControls && Boolean(activeTimerId);
+  const canControlNow = () => enabled && isWorkoutViewOpen() && allowTimerControls && Boolean(activeTimerId);
 
   const safeSetActionHandler = (action, handler) => {
     try {
@@ -1074,11 +1074,26 @@ function updateMediaKeyActionHandlers() {
     }
   };
 
-  safeSetActionHandler("play", canControl ? () => toggleActiveTimer("mediaKey") : null);
-  safeSetActionHandler("pause", canControl ? () => toggleActiveTimer("mediaKey") : null);
-  safeSetActionHandler("stop", canControl ? () => stopActiveTimer({ reset: true, source: "mediaKey" }) : null);
-  safeSetActionHandler("previoustrack", canControl ? () => setAdjacentActiveTimer(-1) : null);
-  safeSetActionHandler("nexttrack", canControl ? () => setAdjacentActiveTimer(1) : null);
+  safeSetActionHandler("play", enabled ? () => {
+    if (!canControlNow()) return;
+    toggleActiveTimer("mediaKey");
+  } : null);
+  safeSetActionHandler("pause", enabled ? () => {
+    if (!canControlNow()) return;
+    toggleActiveTimer("mediaKey");
+  } : null);
+  safeSetActionHandler("stop", enabled ? () => {
+    if (!canControlNow()) return;
+    stopActiveTimer({ reset: true, source: "mediaKey" });
+  } : null);
+  safeSetActionHandler("previoustrack", enabled ? () => {
+    if (!canControlNow()) return;
+    setAdjacentActiveTimer(-1);
+  } : null);
+  safeSetActionHandler("nexttrack", enabled ? () => {
+    if (!canControlNow()) return;
+    setAdjacentActiveTimer(1);
+  } : null);
 }
 
 function updateMediaSessionState() {
@@ -1101,8 +1116,7 @@ function updateMediaSessionState() {
     navigator.mediaSession.metadata = null;
   }
 
-  const isRunning = Boolean(activeTimerId && getTimerState(activeTimerId)?.isRunning);
-  navigator.mediaSession.playbackState = enabled && isRunning ? "playing" : "paused";
+  navigator.mediaSession.playbackState = enabled ? "playing" : "paused";
   updateMediaKeyActionHandlers();
 }
 
