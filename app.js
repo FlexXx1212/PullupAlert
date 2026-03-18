@@ -1028,10 +1028,23 @@ function playMediaKeyConfirmationSound(type) {
 function ensureMediaKeySilentAudioPlayback() {
   if (!isMediaKeyTimerEnabled()) return;
   if (!mediaKeySilentAudio) {
-    mediaKeySilentAudio = new Audio("silent.mp3");
+    mediaKeySilentAudio = new Audio();
+    mediaKeySilentAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
     mediaKeySilentAudio.loop = true;
+    mediaKeySilentAudio.volume = 0;
     mediaKeySilentAudio.preload = "auto";
+    mediaKeySilentAudio.addEventListener("pause", () => {
+      if (isMediaKeyTimerEnabled()) {
+        ensureMediaKeySilentAudioPlayback();
+      }
+    });
+    mediaKeySilentAudio.addEventListener("ended", () => {
+      if (isMediaKeyTimerEnabled()) {
+        ensureMediaKeySilentAudioPlayback();
+      }
+    });
   }
+  if (!mediaKeySilentAudio.paused) return;
   mediaKeySilentAudio.play().catch((err) => {
     if (err?.name === "AbortError") return;
     console.warn("Silent-Audio für Media-Keys konnte nicht gestartet werden:", err);
