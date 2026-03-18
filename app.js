@@ -333,6 +333,10 @@ function saveSettings(settings) {
   } catch { }
 }
 
+function isMediaKeyTimerEnabled() {
+  return Boolean(loadSettings().enableMediaKeyTimerControl);
+}
+
 function sanitizePrefix(prefix) {
   return (prefix || "")
     .toString()
@@ -646,6 +650,8 @@ let activeTimerId = null;
 let timerStateById = {};
 let activeTimerAudios = new Set();
 let allowTimerControls = false;
+let mediaKeySilentAudio = null;
+let mediaKeyResumeHandlerRegistered = false;
 let activeDate = startOfDay(new Date());
 let lastKnownTodayKey = getTodayKey();
 let lastRepeatingLabelRefreshAt = 0;
@@ -932,6 +938,7 @@ function showView(viewId) {
   const view = document.getElementById(viewId);
   view.classList.remove("view--hidden");
   view.classList.add("view--active");
+  updateMediaSessionState();
 }
 
 function isWorkoutViewOpen() {
@@ -1008,6 +1015,84 @@ function playCountdownSound() {
   playTrackedAudio("countdown.mp3", "Countdown-Audio konnte evtl. nicht automatisch abgespielt werden:");
 }
 
+function playMediaKeyConfirmationSound(type) {
+  if (type === "started") {
+    playTrackedAudio("timerStarted.mp3", "Timer-Startsound konnte evtl. nicht automatisch abgespielt werden:");
+    return;
+  }
+  if (type === "aborted") {
+    playTrackedAudio("timerAborted.mp3", "Timer-Abbruchsound konnte evtl. nicht automatisch abgespielt werden:");
+  }
+}
+
+function ensureMediaKeySilentAudioPlayback() {
+  if (!isMediaKeyTimerEnabled()) return;
+  if (!mediaKeySilentAudio) {
+    mediaKeySilentAudio = new Audio("silent.mp3");
+    mediaKeySilentAudio.loop = true;
+    mediaKeySilentAudio.preload = "auto";
+  }
+  mediaKeySilentAudio.play().catch((err) => {
+    if (err?.name === "AbortError") return;
+    console.warn("Silent-Audio für Media-Keys konnte nicht gestartet werden:", err);
+  });
+}
+
+function stopMediaKeySilentAudioPlayback() {
+  if (!mediaKeySilentAudio) return;
+  try {
+    mediaKeySilentAudio.pause();
+    mediaKeySilentAudio.currentTime = 0;
+  } catch (err) {
+    console.warn("Silent-Audio konnte nicht gestoppt werden:", err);
+  }
+}
+
+function updateMediaKeyActionHandlers() {
+  if (!("mediaSession" in navigator)) return;
+  const enabled = isMediaKeyTimerEnabled();
+  const canControl = enabled && isWorkoutViewOpen() && allowTimerControls && Boolean(activeTimerId);
+
+  const safeSetActionHandler = (action, handler) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch {
+      // Action auf Plattform evtl. nicht verfügbar
+    }
+  };
+
+  safeSetActionHandler("play", canControl ? () => toggleActiveTimer("mediaKey") : null);
+  safeSetActionHandler("pause", canControl ? () => toggleActiveTimer("mediaKey") : null);
+  safeSetActionHandler("stop", canControl ? () => stopActiveTimer({ reset: true, source: "mediaKey" }) : null);
+  safeSetActionHandler("previoustrack", canControl ? () => setAdjacentActiveTimer(-1) : null);
+  safeSetActionHandler("nexttrack", canControl ? () => setAdjacentActiveTimer(1) : null);
+}
+
+function updateMediaSessionState() {
+  if (!("mediaSession" in navigator)) return;
+  const enabled = isMediaKeyTimerEnabled();
+
+  if (enabled) {
+    ensureMediaKeySilentAudioPlayback();
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "Kinovo Timer",
+        artist: currentWorkout?.title || "Workout",
+        album: "Media Key Control"
+      });
+    } catch {
+      navigator.mediaSession.metadata = null;
+    }
+  } else {
+    stopMediaKeySilentAudioPlayback();
+    navigator.mediaSession.metadata = null;
+  }
+
+  const isRunning = Boolean(activeTimerId && getTimerState(activeTimerId)?.isRunning);
+  navigator.mediaSession.playbackState = enabled && isRunning ? "playing" : "paused";
+  updateMediaKeyActionHandlers();
+}
+
 // Timer
 function createTimerId() {
   return `t_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -1067,21 +1152,26 @@ function resetTimer(timerId) {
   });
 }
 
-function stopTimer(timerId, { reset = true, stopAudio = true } = {}) {
+function stopTimer(timerId, { reset = true, stopAudio = true, source = "ui" } = {}) {
   clearActiveTimerInterval();
   if (stopAudio) {
     stopTimerAudio();
   }
   const state = getTimerState(timerId);
   if (!state) return;
+  const wasRunning = Boolean(state.isRunning);
   setTimerState(timerId, { isRunning: false });
   if (reset) resetTimer(timerId);
+  if (source === "mediaKey" && wasRunning) {
+    playMediaKeyConfirmationSound("aborted");
+  }
   updateTimerCards();
+  updateMediaSessionState();
 }
 
-function stopActiveTimer({ reset = true } = {}) {
+function stopActiveTimer({ reset = true, source = "ui" } = {}) {
   if (!activeTimerId) return;
-  stopTimer(activeTimerId, { reset });
+  stopTimer(activeTimerId, { reset, source });
 }
 
 function sendTimerNotification(timer) {
@@ -1142,15 +1232,19 @@ function handleTimerFinished(timer) {
   updateTimerCards();
 }
 
-function startTimer(timerId) {
+function startTimer(timerId, source = "ui") {
   const timer = currentWorkout?.timers?.find(t => t.id === timerId);
   if (!timer) return;
 
-  stopActiveTimer({ reset: true });
+  stopActiveTimer({ reset: true, source: "ui" });
   activeTimerId = timerId;
   resetTimer(timerId);
   setTimerState(timerId, { isRunning: true });
+  if (source === "mediaKey") {
+    playMediaKeyConfirmationSound("started");
+  }
   updateTimerCards();
+  updateMediaSessionState();
 
   clearActiveTimerInterval();
   activeTimerIntervalId = setInterval(() => {
@@ -1172,14 +1266,14 @@ function startTimer(timerId) {
   }, 1000);
 }
 
-function toggleActiveTimer() {
+function toggleActiveTimer(source = "ui") {
   if (!activeTimerId) return;
   const state = getTimerState(activeTimerId);
   if (!state) return;
   if (state.isRunning) {
-    stopTimer(activeTimerId, { reset: true });
+    stopTimer(activeTimerId, { reset: true, source });
   } else {
-    startTimer(activeTimerId);
+    startTimer(activeTimerId, source);
   }
 }
 
@@ -1188,6 +1282,7 @@ function setActiveTimer(timerId) {
   stopActiveTimer({ reset: true });
   activeTimerId = timerId;
   updateTimerCards();
+  updateMediaSessionState();
 }
 
 function setAdjacentActiveTimer(direction) {
@@ -2602,6 +2697,7 @@ function setupEventListeners() {
   const openSettingsBtn = $("#openSettingsBtn");
   const closeSettingsBtn = $("#closeSettingsBtn");
   const settingsBackdrop = $("#settingsModalBackdrop");
+  const mediaKeyTimerToggle = $("#mediaKeyTimerToggle");
 
   if (openSettingsBtn) {
     openSettingsBtn.addEventListener("click", openSettingsModal);
@@ -2611,6 +2707,26 @@ function setupEventListeners() {
   }
   if (settingsBackdrop) {
     settingsBackdrop.addEventListener("click", closeSettingsModal);
+  }
+
+  if (mediaKeyTimerToggle) {
+    mediaKeyTimerToggle.checked = isMediaKeyTimerEnabled();
+    mediaKeyTimerToggle.addEventListener("change", (event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement)) return;
+      const currentSettings = loadSettings();
+      saveSettings({
+        ...currentSettings,
+        enableMediaKeyTimerControl: input.checked
+      });
+      updateMediaSessionState();
+
+      if (!mediaKeyResumeHandlerRegistered) {
+        mediaKeyResumeHandlerRegistered = true;
+        document.addEventListener("pointerdown", ensureMediaKeySilentAudioPlayback, { passive: true });
+        document.addEventListener("keydown", ensureMediaKeySilentAudioPlayback);
+      }
+    });
   }
 
   const exportDataBtn = $("#exportDataBtn");
@@ -2684,6 +2800,13 @@ async function initApp() {
   updateCurrentTimeDisplay();
   document.title = BASE_TITLE;
   requestNotificationPermission();
+  updateMediaSessionState();
+
+  if (isMediaKeyTimerEnabled() && !mediaKeyResumeHandlerRegistered) {
+    mediaKeyResumeHandlerRegistered = true;
+    document.addEventListener("pointerdown", ensureMediaKeySilentAudioPlayback, { passive: true });
+    document.addEventListener("keydown", ensureMediaKeySilentAudioPlayback);
+  }
 
   // Stand Up Alert Logic starten
   initStandUpLogic();
