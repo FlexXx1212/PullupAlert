@@ -337,6 +337,21 @@ function isMediaKeyTimerEnabled() {
   return Boolean(loadSettings().enableMediaKeyTimerControl);
 }
 
+function mediaKeyDebug(message, extra = {}) {
+  console.debug(`[MediaKeyDebug] ${message}`, {
+    enabled: isMediaKeyTimerEnabled(),
+    allowTimerControls,
+    activeTimerId,
+    activeTimerRunning: Boolean(activeTimerId && getTimerState(activeTimerId)?.isRunning),
+    isWorkoutViewOpen: isWorkoutViewOpen(),
+    silentAudioExists: Boolean(mediaKeySilentAudio),
+    silentAudioPaused: mediaKeySilentAudio ? mediaKeySilentAudio.paused : null,
+    mediaSessionSupported: "mediaSession" in navigator,
+    playbackState: ("mediaSession" in navigator) ? navigator.mediaSession.playbackState : "unsupported",
+    ...extra
+  });
+}
+
 function sanitizePrefix(prefix) {
   return (prefix || "")
     .toString()
@@ -1026,37 +1041,49 @@ function playMediaKeyConfirmationSound(type) {
 }
 
 function ensureMediaKeySilentAudioPlayback() {
+  mediaKeyDebug("ensureMediaKeySilentAudioPlayback() called");
   if (!isMediaKeyTimerEnabled()) return;
   if (!mediaKeySilentAudio) {
+    mediaKeyDebug("creating silent keepalive audio");
     mediaKeySilentAudio = new Audio();
     mediaKeySilentAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
     mediaKeySilentAudio.loop = true;
     mediaKeySilentAudio.volume = 0;
     mediaKeySilentAudio.preload = "auto";
     mediaKeySilentAudio.addEventListener("pause", () => {
+      mediaKeyDebug("silent audio pause event");
       if (isMediaKeyTimerEnabled()) {
         ensureMediaKeySilentAudioPlayback();
       }
     });
     mediaKeySilentAudio.addEventListener("ended", () => {
+      mediaKeyDebug("silent audio ended event");
       if (isMediaKeyTimerEnabled()) {
         ensureMediaKeySilentAudioPlayback();
       }
     });
   }
-  if (!mediaKeySilentAudio.paused) return;
+  if (!mediaKeySilentAudio.paused) {
+    mediaKeyDebug("silent audio already playing");
+    return;
+  }
+  mediaKeyDebug("attempting silent audio play()");
   mediaKeySilentAudio.play().catch((err) => {
     if (err?.name === "AbortError") return;
+    mediaKeyDebug("silent audio play() failed", { errorName: err?.name, errorMessage: err?.message });
     console.warn("Silent-Audio für Media-Keys konnte nicht gestartet werden:", err);
   });
 }
 
 function stopMediaKeySilentAudioPlayback() {
+  mediaKeyDebug("stopMediaKeySilentAudioPlayback() called");
   if (!mediaKeySilentAudio) return;
   try {
     mediaKeySilentAudio.pause();
     mediaKeySilentAudio.currentTime = 0;
+    mediaKeyDebug("silent audio paused + reset to 0");
   } catch (err) {
+    mediaKeyDebug("silent audio stop failed", { errorName: err?.name, errorMessage: err?.message });
     console.warn("Silent-Audio konnte nicht gestoppt werden:", err);
   }
 }
@@ -1065,6 +1092,7 @@ function updateMediaKeyActionHandlers() {
   if (!("mediaSession" in navigator)) return;
   const enabled = isMediaKeyTimerEnabled();
   const canControlNow = () => enabled && isWorkoutViewOpen() && allowTimerControls && Boolean(activeTimerId);
+  mediaKeyDebug("updateMediaKeyActionHandlers()", { enabled });
 
   const safeSetActionHandler = (action, handler) => {
     try {
@@ -1075,22 +1103,27 @@ function updateMediaKeyActionHandlers() {
   };
 
   safeSetActionHandler("play", enabled ? () => {
+    mediaKeyDebug("media action: play", { canControl: canControlNow() });
     if (!canControlNow()) return;
     toggleActiveTimer("mediaKey");
   } : null);
   safeSetActionHandler("pause", enabled ? () => {
+    mediaKeyDebug("media action: pause", { canControl: canControlNow() });
     if (!canControlNow()) return;
     toggleActiveTimer("mediaKey");
   } : null);
   safeSetActionHandler("stop", enabled ? () => {
+    mediaKeyDebug("media action: stop", { canControl: canControlNow() });
     if (!canControlNow()) return;
     stopActiveTimer({ reset: true, source: "mediaKey" });
   } : null);
   safeSetActionHandler("previoustrack", enabled ? () => {
+    mediaKeyDebug("media action: previoustrack", { canControl: canControlNow() });
     if (!canControlNow()) return;
     setAdjacentActiveTimer(-1);
   } : null);
   safeSetActionHandler("nexttrack", enabled ? () => {
+    mediaKeyDebug("media action: nexttrack", { canControl: canControlNow() });
     if (!canControlNow()) return;
     setAdjacentActiveTimer(1);
   } : null);
@@ -1099,6 +1132,7 @@ function updateMediaKeyActionHandlers() {
 function updateMediaSessionState() {
   if (!("mediaSession" in navigator)) return;
   const enabled = isMediaKeyTimerEnabled();
+  mediaKeyDebug("updateMediaSessionState()", { enabled });
 
   if (enabled) {
     ensureMediaKeySilentAudioPlayback();
@@ -1117,6 +1151,7 @@ function updateMediaSessionState() {
   }
 
   navigator.mediaSession.playbackState = enabled ? "playing" : "paused";
+  mediaKeyDebug("mediaSession playbackState updated", { nextPlaybackState: navigator.mediaSession.playbackState });
   updateMediaKeyActionHandlers();
 }
 
@@ -1180,6 +1215,7 @@ function resetTimer(timerId) {
 }
 
 function stopTimer(timerId, { reset = true, stopAudio = true, source = "ui" } = {}) {
+  mediaKeyDebug("stopTimer()", { timerId, reset, stopAudio, source });
   clearActiveTimerInterval();
   if (stopAudio) {
     stopTimerAudio();
@@ -1260,6 +1296,7 @@ function handleTimerFinished(timer) {
 }
 
 function startTimer(timerId, source = "ui") {
+  mediaKeyDebug("startTimer()", { timerId, source });
   const timer = currentWorkout?.timers?.find(t => t.id === timerId);
   if (!timer) return;
 
@@ -1294,6 +1331,7 @@ function startTimer(timerId, source = "ui") {
 }
 
 function toggleActiveTimer(source = "ui") {
+  mediaKeyDebug("toggleActiveTimer()", { source });
   if (!activeTimerId) return;
   const state = getTimerState(activeTimerId);
   if (!state) return;
@@ -2741,6 +2779,7 @@ function setupEventListeners() {
     mediaKeyTimerToggle.addEventListener("change", (event) => {
       const input = event.target;
       if (!(input instanceof HTMLInputElement)) return;
+      mediaKeyDebug("settings toggle changed", { checked: input.checked });
       const currentSettings = loadSettings();
       saveSettings({
         ...currentSettings,
@@ -2750,8 +2789,15 @@ function setupEventListeners() {
 
       if (!mediaKeyResumeHandlerRegistered) {
         mediaKeyResumeHandlerRegistered = true;
-        document.addEventListener("pointerdown", ensureMediaKeySilentAudioPlayback, { passive: true });
-        document.addEventListener("keydown", ensureMediaKeySilentAudioPlayback);
+        document.addEventListener("pointerdown", () => {
+          mediaKeyDebug("pointerdown resume handler fired");
+          ensureMediaKeySilentAudioPlayback();
+        }, { passive: true });
+        document.addEventListener("keydown", () => {
+          mediaKeyDebug("keydown resume handler fired");
+          ensureMediaKeySilentAudioPlayback();
+        });
+        mediaKeyDebug("registered resume handlers from settings toggle");
       }
     });
   }
@@ -2831,8 +2877,15 @@ async function initApp() {
 
   if (isMediaKeyTimerEnabled() && !mediaKeyResumeHandlerRegistered) {
     mediaKeyResumeHandlerRegistered = true;
-    document.addEventListener("pointerdown", ensureMediaKeySilentAudioPlayback, { passive: true });
-    document.addEventListener("keydown", ensureMediaKeySilentAudioPlayback);
+    document.addEventListener("pointerdown", () => {
+      mediaKeyDebug("pointerdown resume handler fired");
+      ensureMediaKeySilentAudioPlayback();
+    }, { passive: true });
+    document.addEventListener("keydown", () => {
+      mediaKeyDebug("keydown resume handler fired");
+      ensureMediaKeySilentAudioPlayback();
+    });
+    mediaKeyDebug("registered resume handlers from initApp");
   }
 
   // Stand Up Alert Logic starten
