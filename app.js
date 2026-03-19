@@ -2727,6 +2727,40 @@ function setupEventListeners() {
   }
 
   document.addEventListener("keydown", (event) => {
+    const mediaCode = event.code || event.key;
+    const isMediaPlayPause = mediaCode === "MediaPlayPause";
+    const isMediaStop = mediaCode === "MediaStop";
+    const isMediaNext = mediaCode === "MediaTrackNext";
+    const isMediaPrev = mediaCode === "MediaTrackPrevious";
+    const isMediaKeyEvent = isMediaPlayPause || isMediaStop || isMediaNext || isMediaPrev;
+
+    if (isMediaKeyEvent) {
+      mediaKeyDebug("fallback keydown media key detected", { mediaCode });
+      if (isMediaKeyTimerEnabled() && isWorkoutViewOpen() && allowTimerControls && activeTimerId) {
+        event.preventDefault();
+        if (isMediaPlayPause) {
+          mediaKeyDebug("fallback media key action: play/pause");
+          toggleActiveTimer("mediaKey");
+          return;
+        }
+        if (isMediaStop) {
+          mediaKeyDebug("fallback media key action: stop");
+          stopActiveTimer({ reset: true, source: "mediaKey" });
+          return;
+        }
+        if (isMediaNext) {
+          mediaKeyDebug("fallback media key action: next");
+          setAdjacentActiveTimer(1);
+          return;
+        }
+        if (isMediaPrev) {
+          mediaKeyDebug("fallback media key action: previous");
+          setAdjacentActiveTimer(-1);
+          return;
+        }
+      }
+    }
+
     const target = event.target;
     const isTypingField = target instanceof HTMLElement && (
       target.isContentEditable ||
