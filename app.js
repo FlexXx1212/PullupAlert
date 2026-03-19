@@ -338,18 +338,8 @@ function isMediaKeyTimerEnabled() {
 }
 
 function mediaKeyDebug(message, extra = {}) {
-  console.debug(`[MediaKeyDebug] ${message}`, {
-    enabled: isMediaKeyTimerEnabled(),
-    allowTimerControls,
-    activeTimerId,
-    activeTimerRunning: Boolean(activeTimerId && getTimerState(activeTimerId)?.isRunning),
-    isWorkoutViewOpen: isWorkoutViewOpen(),
-    silentAudioExists: Boolean(mediaKeySilentAudio),
-    silentAudioPaused: mediaKeySilentAudio ? mediaKeySilentAudio.paused : null,
-    mediaSessionSupported: "mediaSession" in navigator,
-    playbackState: ("mediaSession" in navigator) ? navigator.mediaSession.playbackState : "unsupported",
-    ...extra
-  });
+  void message;
+  void extra;
 }
 
 function runDebouncedMediaKeyAction(actionName, callback) {
@@ -1136,21 +1126,9 @@ function updateMediaKeyActionHandlers() {
     if (!canControlNow()) return;
     runDebouncedMediaKeyAction("mediaSession:pause", () => toggleActiveTimer("mediaKey"));
   } : null);
-  safeSetActionHandler("stop", enabled ? () => {
-    mediaKeyDebug("media action: stop", { canControl: canControlNow() });
-    if (!canControlNow()) return;
-    runDebouncedMediaKeyAction("mediaSession:stop", () => stopActiveTimer({ reset: true, source: "mediaKey" }));
-  } : null);
-  safeSetActionHandler("previoustrack", enabled ? () => {
-    mediaKeyDebug("media action: previoustrack", { canControl: canControlNow() });
-    if (!canControlNow()) return;
-    runDebouncedMediaKeyAction("mediaSession:previoustrack", () => setAdjacentActiveTimer(-1));
-  } : null);
-  safeSetActionHandler("nexttrack", enabled ? () => {
-    mediaKeyDebug("media action: nexttrack", { canControl: canControlNow() });
-    if (!canControlNow()) return;
-    runDebouncedMediaKeyAction("mediaSession:nexttrack", () => setAdjacentActiveTimer(1));
-  } : null);
+  safeSetActionHandler("stop", null);
+  safeSetActionHandler("previoustrack", null);
+  safeSetActionHandler("nexttrack", null);
 }
 
 function updateMediaSessionState() {
@@ -2742,10 +2720,7 @@ function setupEventListeners() {
   document.addEventListener("keydown", (event) => {
     const mediaCode = event.code || event.key;
     const isMediaPlayPause = mediaCode === "MediaPlayPause";
-    const isMediaStop = mediaCode === "MediaStop";
-    const isMediaNext = mediaCode === "MediaTrackNext";
-    const isMediaPrev = mediaCode === "MediaTrackPrevious";
-    const isMediaKeyEvent = isMediaPlayPause || isMediaStop || isMediaNext || isMediaPrev;
+    const isMediaKeyEvent = isMediaPlayPause;
 
     if (isMediaKeyEvent) {
       mediaKeyDebug("fallback keydown media key detected", { mediaCode });
@@ -2754,21 +2729,6 @@ function setupEventListeners() {
         if (isMediaPlayPause) {
           mediaKeyDebug("fallback media key action: play/pause");
           runDebouncedMediaKeyAction("keydown:MediaPlayPause", () => toggleActiveTimer("mediaKey"));
-          return;
-        }
-        if (isMediaStop) {
-          mediaKeyDebug("fallback media key action: stop");
-          runDebouncedMediaKeyAction("keydown:MediaStop", () => stopActiveTimer({ reset: true, source: "mediaKey" }));
-          return;
-        }
-        if (isMediaNext) {
-          mediaKeyDebug("fallback media key action: next");
-          runDebouncedMediaKeyAction("keydown:MediaTrackNext", () => setAdjacentActiveTimer(1));
-          return;
-        }
-        if (isMediaPrev) {
-          mediaKeyDebug("fallback media key action: previous");
-          runDebouncedMediaKeyAction("keydown:MediaTrackPrevious", () => setAdjacentActiveTimer(-1));
           return;
         }
       }
