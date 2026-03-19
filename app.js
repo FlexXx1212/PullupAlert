@@ -352,6 +352,18 @@ function mediaKeyDebug(message, extra = {}) {
   });
 }
 
+function runDebouncedMediaKeyAction(actionName, callback) {
+  const now = Date.now();
+  const deltaMs = now - lastMediaKeyActionAt;
+  if (deltaMs < 250) {
+    mediaKeyDebug("media key action ignored (debounced)", { actionName, deltaMs });
+    return;
+  }
+  lastMediaKeyActionAt = now;
+  mediaKeyDebug("media key action accepted", { actionName, deltaMs });
+  callback();
+}
+
 function sanitizePrefix(prefix) {
   return (prefix || "")
     .toString()
@@ -667,6 +679,7 @@ let activeTimerAudios = new Set();
 let allowTimerControls = false;
 let mediaKeySilentAudio = null;
 let mediaKeyResumeHandlerRegistered = false;
+let lastMediaKeyActionAt = 0;
 let activeDate = startOfDay(new Date());
 let lastKnownTodayKey = getTodayKey();
 let lastRepeatingLabelRefreshAt = 0;
@@ -1116,27 +1129,27 @@ function updateMediaKeyActionHandlers() {
   safeSetActionHandler("play", enabled ? () => {
     mediaKeyDebug("media action: play", { canControl: canControlNow() });
     if (!canControlNow()) return;
-    toggleActiveTimer("mediaKey");
+    runDebouncedMediaKeyAction("mediaSession:play", () => toggleActiveTimer("mediaKey"));
   } : null);
   safeSetActionHandler("pause", enabled ? () => {
     mediaKeyDebug("media action: pause", { canControl: canControlNow() });
     if (!canControlNow()) return;
-    toggleActiveTimer("mediaKey");
+    runDebouncedMediaKeyAction("mediaSession:pause", () => toggleActiveTimer("mediaKey"));
   } : null);
   safeSetActionHandler("stop", enabled ? () => {
     mediaKeyDebug("media action: stop", { canControl: canControlNow() });
     if (!canControlNow()) return;
-    stopActiveTimer({ reset: true, source: "mediaKey" });
+    runDebouncedMediaKeyAction("mediaSession:stop", () => stopActiveTimer({ reset: true, source: "mediaKey" }));
   } : null);
   safeSetActionHandler("previoustrack", enabled ? () => {
     mediaKeyDebug("media action: previoustrack", { canControl: canControlNow() });
     if (!canControlNow()) return;
-    setAdjacentActiveTimer(-1);
+    runDebouncedMediaKeyAction("mediaSession:previoustrack", () => setAdjacentActiveTimer(-1));
   } : null);
   safeSetActionHandler("nexttrack", enabled ? () => {
     mediaKeyDebug("media action: nexttrack", { canControl: canControlNow() });
     if (!canControlNow()) return;
-    setAdjacentActiveTimer(1);
+    runDebouncedMediaKeyAction("mediaSession:nexttrack", () => setAdjacentActiveTimer(1));
   } : null);
 }
 
@@ -2740,22 +2753,22 @@ function setupEventListeners() {
         event.preventDefault();
         if (isMediaPlayPause) {
           mediaKeyDebug("fallback media key action: play/pause");
-          toggleActiveTimer("mediaKey");
+          runDebouncedMediaKeyAction("keydown:MediaPlayPause", () => toggleActiveTimer("mediaKey"));
           return;
         }
         if (isMediaStop) {
           mediaKeyDebug("fallback media key action: stop");
-          stopActiveTimer({ reset: true, source: "mediaKey" });
+          runDebouncedMediaKeyAction("keydown:MediaStop", () => stopActiveTimer({ reset: true, source: "mediaKey" }));
           return;
         }
         if (isMediaNext) {
           mediaKeyDebug("fallback media key action: next");
-          setAdjacentActiveTimer(1);
+          runDebouncedMediaKeyAction("keydown:MediaTrackNext", () => setAdjacentActiveTimer(1));
           return;
         }
         if (isMediaPrev) {
           mediaKeyDebug("fallback media key action: previous");
-          setAdjacentActiveTimer(-1);
+          runDebouncedMediaKeyAction("keydown:MediaTrackPrevious", () => setAdjacentActiveTimer(-1));
           return;
         }
       }
