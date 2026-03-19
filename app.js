@@ -1020,6 +1020,7 @@ function playTrackedAudio(src, warningMessage) {
     if (err?.name === "AbortError") return;
     console.warn(warningMessage, err);
   });
+  return audio;
 }
 
 function playAlertSound() {
@@ -1031,13 +1032,23 @@ function playCountdownSound() {
 }
 
 function playMediaKeyConfirmationSound(type) {
+  let confirmationAudio = null;
   if (type === "started") {
-    playTrackedAudio("timerStarted.mp3", "Timer-Startsound konnte evtl. nicht automatisch abgespielt werden:");
-    return;
+    confirmationAudio = playTrackedAudio("timerStarted.mp3", "Timer-Startsound konnte evtl. nicht automatisch abgespielt werden:");
   }
-  if (type === "aborted") {
-    playTrackedAudio("timerAborted.mp3", "Timer-Abbruchsound konnte evtl. nicht automatisch abgespielt werden:");
+  if (type === "aborted" && !confirmationAudio) {
+    confirmationAudio = playTrackedAudio("timerAborted.mp3", "Timer-Abbruchsound konnte evtl. nicht automatisch abgespielt werden:");
   }
+  if (!confirmationAudio) return;
+
+  const restoreMediaSession = () => {
+    mediaKeyDebug("restoring media session after confirmation sound", { type });
+    ensureMediaKeySilentAudioPlayback();
+    updateMediaSessionState();
+  };
+
+  confirmationAudio.addEventListener("ended", restoreMediaSession, { once: true });
+  window.setTimeout(restoreMediaSession, 250);
 }
 
 function ensureMediaKeySilentAudioPlayback() {
