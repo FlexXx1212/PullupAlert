@@ -175,13 +175,14 @@
   --danger: #ff4b5c;
   --success: #4caf50;
   --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.5);
+  --shadow-accent: 0 0 28px rgba(63, 208, 255, 0.18);
   --radius-lg: 18px;
   --radius-xl: 22px;
   --radius-pill: 999px;
   --transition-fast: 0.18s ease-out;
   --transition-med: 0.25s ease-out;
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Roboto", "Segoe UI", sans-serif;
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-display: 'Syne', system-ui, sans-serif;
 }
 
 *,
@@ -223,11 +224,24 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 22px;
+  padding: 18px 24px;
   background: linear-gradient(135deg, #10131d, #151a25);
   border-radius: 20px;
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(63, 208, 255, 0.35), transparent);
+  pointer-events: none;
 }
 
 .title-row {
@@ -238,8 +252,11 @@ body {
 
 .app-title {
   margin: 0;
-  font-size: clamp(1.6rem, 2.2vw, 2rem);
-  letter-spacing: 0.05em;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 2.4vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .header-right {
@@ -293,9 +310,12 @@ body {
 }
 
 .app-subtitle {
-  margin: 4px 0 0;
-  font-size: 0.9rem;
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .subtitle-row {
@@ -373,16 +393,23 @@ body {
 
 #overviewView h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .date-pill {
-  padding: 6px 12px;
+  padding: 6px 13px;
   border-radius: var(--radius-pill);
   background: rgba(63, 208, 255, 0.12);
   border: 1px solid var(--accent-soft);
   color: var(--accent);
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   line-height: 1;
 }
 
@@ -425,23 +452,45 @@ body {
 
 /* Workout Card */
 
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .workout-card {
   position: relative;
   padding: 16px 16px 14px;
   border-radius: var(--radius-lg);
   background: linear-gradient(145deg, #141722, #181c28);
   border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   gap: 10px;
   transition: transform var(--transition-med), box-shadow var(--transition-med),
     border-color var(--transition-med), background var(--transition-med);
+  animation: cardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+.workout-card:nth-child(1)  { animation-delay: 0ms; }
+.workout-card:nth-child(2)  { animation-delay: 60ms; }
+.workout-card:nth-child(3)  { animation-delay: 120ms; }
+.workout-card:nth-child(4)  { animation-delay: 180ms; }
+.workout-card:nth-child(5)  { animation-delay: 240ms; }
+.workout-card:nth-child(6)  { animation-delay: 300ms; }
+.workout-card:nth-child(7)  { animation-delay: 360ms; }
+.workout-card:nth-child(8)  { animation-delay: 420ms; }
 
 .workout-card:hover {
   transform: translateY(-2px);
-  border-color: var(--accent-soft);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  border-left-color: var(--accent);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6), var(--shadow-accent);
 }
 
 .workout-card--completed {
@@ -465,22 +514,28 @@ body {
 }
 
 .workout-time {
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--accent);
+  letter-spacing: 0.01em;
 }
 
 .workout-label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 
 .workout-title {
   margin: 2px 0 0;
-  font-size: 0.98rem;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .workout-meta {
@@ -492,7 +547,11 @@ body {
 }
 
 .workout-status {
-  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   padding: 3px 9px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-subtle);
@@ -556,9 +615,10 @@ body {
   cursor: pointer;
   border-radius: var(--radius-pill);
   border: none;
+  font-family: var(--font-sans);
   font-size: 0.86rem;
-  padding: 8px 13px;
-  font-weight: 500;
+  padding: 8px 14px;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -579,9 +639,29 @@ body {
 }
 
 .btn--primary {
+  position: relative;
+  overflow: hidden;
   background: radial-gradient(circle at 0 0, #3fd0ff, #0099ff);
   color: #020308;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
+}
+
+.btn--primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.55s ease;
+}
+
+.btn--primary:hover:not(:disabled)::after {
+  left: 150%;
 }
 
 .btn--primary:hover:not(:disabled) {
@@ -598,8 +678,9 @@ body {
 }
 
 .btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text);
+  border-color: rgba(63, 208, 255, 0.25);
 }
 
 .btn--small {
@@ -673,7 +754,10 @@ body {
 
 .active-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
 .active-label {
@@ -897,8 +981,10 @@ body {
 }
 
 .workout-timer-name {
-  font-weight: 600;
-  font-size: 1rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
 }
 
 .workout-timer-badge {
@@ -912,8 +998,11 @@ body {
 }
 
 .workout-timer-time {
+  font-family: var(--font-display);
   font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .workout-timer-action {
@@ -1009,7 +1098,10 @@ body {
 
 .modal-header h2 {
   margin: 0;
-  font-size: 1.4rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .form-row {
@@ -1167,9 +1259,11 @@ body {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .days-checkboxes {
@@ -1350,9 +1444,10 @@ body {
 /* Stand Up Alert Styles */
 
 .standup-timer {
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--accent);
 }
 
@@ -1478,7 +1573,10 @@ body {
 
 .standup-header h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
