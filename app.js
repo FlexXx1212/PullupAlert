@@ -139,7 +139,7 @@ async function overwriteStorageData(data) {
 
 async function handlePersistenceModeChange() {
   await loadWorkouts();
-  renderOverview();
+  renderOverview(true);
   window.exerciseVariables = getExerciseVariables();
   renderExerciseVariablesSettings();
   updateExerciseVariablePrefixList();
@@ -887,7 +887,7 @@ function updateDateNavUI() {
 function setActiveDate(newDate) {
   activeDate = startOfDay(newDate);
   updateDateNavUI();
-  renderOverview();
+  renderOverview(true);
   const isActiveViewVisible = document.getElementById("activeView")?.classList.contains("view--active");
   if (isActiveViewVisible && currentWorkout) {
     showActiveWorkout(currentWorkout);
@@ -1464,7 +1464,7 @@ function addWorkout(workoutData) {
   if (!newWorkout.repeating) {
     setWorkoutCompleted(newId, initialCompleted, activeDate);
   }
-  renderOverview();
+  renderOverview(true);
 }
 
 function updateWorkout(id, workoutData) {
@@ -1504,21 +1504,22 @@ function updateWorkout(id, workoutData) {
   workouts.sort((a, b) => a.time.localeCompare(b.time));
 
   saveWorkoutsToStorage(workouts);
-  renderOverview();
+  renderOverview(true);
 }
 
 function deleteWorkout(id) {
   if (!confirm("Wirklich löschen?")) return;
   workouts = workouts.filter(w => w.id !== id);
   saveWorkoutsToStorage(workouts);
-  renderOverview();
+  renderOverview(true);
 }
 
 // Übersicht rendern
-function renderOverview() {
+function renderOverview(animate = false) {
   const container = $("#workoutList");
   updateDateNavUI();
   if (!container) return;
+  if (animate) void container.offsetWidth; // force reflow so cardReveal animation restarts
   container.innerHTML = "";
   const now = new Date();
   const completions = loadCompletions();
@@ -1526,6 +1527,7 @@ function renderOverview() {
   const isTodayView = isViewingToday();
   const isPastView = activeDate < startOfDay(new Date());
 
+  let cardIndex = 0;
   workouts.forEach((workout) => {
     if (isCategoryHidden(workout.categoryId)) return;
     const isRepeating = isRepeatingWorkout(workout);
@@ -1537,6 +1539,9 @@ function renderOverview() {
 
     const card = document.createElement("article");
     card.className = "workout-card";
+    if (animate) card.style.animationDelay = `${cardIndex * 60}ms`;
+    else card.style.animation = "none";
+    cardIndex++;
     if (isCompleted) card.classList.add("workout-card--completed");
     if (!isOnSelectedDay && !isCompleted) card.classList.add("workout-card--not-today");
     card.dataset.workoutId = workout.id;
@@ -1735,7 +1740,7 @@ function markCurrentWorkoutCompleted() {
   allowTimerControls = false;
   stopTitleBlink();
   showView("overviewView");
-  renderOverview();
+  renderOverview(true);
 }
 
 // Zeitbasierte Reminder-Logik
@@ -2140,14 +2145,28 @@ function createTimerEditorRow(timer, container) {
   secondarySecondsLabel.appendChild(secondarySecondsInput);
   secondarySecondsLabel.append("Sek. extra");
 
-  const repeatLabel = document.createElement("label");
+  const repeatLabel = document.createElement("div");
   repeatLabel.className = "timer-repeat";
+
+  const repeatText = document.createElement("span");
+  repeatText.textContent = "Loop";
+
+  const switchLabel = document.createElement("label");
+  switchLabel.className = "switch";
+
   const repeatInput = document.createElement("input");
   repeatInput.type = "checkbox";
   repeatInput.className = "timer-repeat-input";
   repeatInput.checked = Boolean(timer.repeating);
-  repeatLabel.appendChild(repeatInput);
-  repeatLabel.append(" Loop");
+
+  const sliderSpan = document.createElement("span");
+  sliderSpan.className = "slider round";
+
+  switchLabel.appendChild(repeatInput);
+  switchLabel.appendChild(sliderSpan);
+
+  repeatLabel.appendChild(repeatText);
+  repeatLabel.appendChild(switchLabel);
 
   fields.appendChild(nameInput);
   fields.appendChild(secondsLabel);
@@ -2671,7 +2690,7 @@ function setupEventListeners() {
 async function initApp() {
   await initializePersistence();
   await loadWorkouts();
-  renderOverview();
+  renderOverview(true);
   setupEventListeners();
   setupCustomInputs();
 
