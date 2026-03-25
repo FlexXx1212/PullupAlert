@@ -1672,8 +1672,9 @@ function showActiveWorkout(workout) {
   const isCompletedForDate = isRepeatingWorkout(workout) ? false : isWorkoutCompleted(workout.id, activeDate);
   const isOnSelectedDay = isWorkoutOnDate(workout, activeDate);
   const isPastView = activeDate < startOfDay(new Date());
-  const allowActiveControls = isOnSelectedDay && !isCompletedForDate && (isViewingToday() || isPastView);
-  allowTimerControls = allowActiveControls;
+  const allowTimerControlsForDate = isOnSelectedDay && (isViewingToday() || isPastView);
+  const allowActiveControls = allowTimerControlsForDate && !isCompletedForDate;
+  allowTimerControls = allowTimerControlsForDate;
   initializeTimerState(workout);
   renderWorkoutTimers(workout);
 
