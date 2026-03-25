@@ -2147,12 +2147,26 @@ function createTimerEditorRow(timer, container) {
 
   const repeatLabel = document.createElement("label");
   repeatLabel.className = "timer-repeat";
+
+  const repeatText = document.createElement("span");
+  repeatText.textContent = "Loop";
+
+  const switchLabel = document.createElement("label");
+  switchLabel.className = "switch";
+
   const repeatInput = document.createElement("input");
   repeatInput.type = "checkbox";
   repeatInput.className = "timer-repeat-input";
   repeatInput.checked = Boolean(timer.repeating);
-  repeatLabel.appendChild(repeatInput);
-  repeatLabel.append(" Loop");
+
+  const sliderSpan = document.createElement("span");
+  sliderSpan.className = "slider round";
+
+  switchLabel.appendChild(repeatInput);
+  switchLabel.appendChild(sliderSpan);
+
+  repeatLabel.appendChild(repeatText);
+  repeatLabel.appendChild(switchLabel);
 
   fields.appendChild(nameInput);
   fields.appendChild(secondsLabel);

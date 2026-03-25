@@ -1226,7 +1226,8 @@ body {
 .timer-repeat {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 10px;
   color: var(--text-muted);
   font-size: 0.85rem;
 }
