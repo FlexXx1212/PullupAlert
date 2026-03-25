@@ -139,7 +139,7 @@ async function overwriteStorageData(data) {
 
 async function handlePersistenceModeChange() {
   await loadWorkouts();
-  renderOverview();
+  renderOverview(true);
   window.exerciseVariables = getExerciseVariables();
   renderExerciseVariablesSettings();
   updateExerciseVariablePrefixList();
@@ -887,7 +887,7 @@ function updateDateNavUI() {
 function setActiveDate(newDate) {
   activeDate = startOfDay(newDate);
   updateDateNavUI();
-  renderOverview();
+  renderOverview(true);
   const isActiveViewVisible = document.getElementById("activeView")?.classList.contains("view--active");
   if (isActiveViewVisible && currentWorkout) {
     showActiveWorkout(currentWorkout);
@@ -1464,7 +1464,7 @@ function addWorkout(workoutData) {
   if (!newWorkout.repeating) {
     setWorkoutCompleted(newId, initialCompleted, activeDate);
   }
-  renderOverview();
+  renderOverview(true);
 }
 
 function updateWorkout(id, workoutData) {
@@ -1504,23 +1504,23 @@ function updateWorkout(id, workoutData) {
   workouts.sort((a, b) => a.time.localeCompare(b.time));
 
   saveWorkoutsToStorage(workouts);
-  renderOverview();
+  renderOverview(true);
 }
 
 function deleteWorkout(id) {
   if (!confirm("Wirklich löschen?")) return;
   workouts = workouts.filter(w => w.id !== id);
   saveWorkoutsToStorage(workouts);
-  renderOverview();
+  renderOverview(true);
 }
 
 // Übersicht rendern
-function renderOverview() {
+function renderOverview(animate = false) {
   const container = $("#workoutList");
   updateDateNavUI();
   if (!container) return;
+  if (animate) void container.offsetWidth; // force reflow so cardReveal animation restarts
   container.innerHTML = "";
-  void container.offsetWidth; // force reflow so cardReveal animation always restarts
   const now = new Date();
   const completions = loadCompletions();
   const activeDateKey = getDateKey(activeDate);
@@ -1539,7 +1539,8 @@ function renderOverview() {
 
     const card = document.createElement("article");
     card.className = "workout-card";
-    card.style.animationDelay = `${cardIndex * 60}ms`;
+    if (animate) card.style.animationDelay = `${cardIndex * 60}ms`;
+    else card.style.animation = "none";
     cardIndex++;
     if (isCompleted) card.classList.add("workout-card--completed");
     if (!isOnSelectedDay && !isCompleted) card.classList.add("workout-card--not-today");
@@ -1739,7 +1740,7 @@ function markCurrentWorkoutCompleted() {
   allowTimerControls = false;
   stopTitleBlink();
   showView("overviewView");
-  renderOverview();
+  renderOverview(true);
 }
 
 // Zeitbasierte Reminder-Logik
@@ -2675,7 +2676,7 @@ function setupEventListeners() {
 async function initApp() {
   await initializePersistence();
   await loadWorkouts();
-  renderOverview();
+  renderOverview(true);
   setupEventListeners();
   setupCustomInputs();
 
