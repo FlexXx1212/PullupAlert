@@ -181,8 +181,8 @@
   --radius-pill: 999px;
   --transition-fast: 0.18s ease-out;
   --transition-med: 0.25s ease-out;
-  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
-  --font-display: 'Syne', system-ui, sans-serif;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Roboto", "Segoe UI", sans-serif;
 }
 
 *,
@@ -252,7 +252,6 @@ body {
 
 .app-title {
   margin: 0;
-  font-family: var(--font-display);
   font-size: clamp(1.7rem, 2.4vw, 2.1rem);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -393,7 +392,6 @@ body {
 
 #overviewView h2 {
   margin: 0;
-  font-family: var(--font-display);
   font-size: 1.45rem;
   font-weight: 800;
   letter-spacing: -0.01em;
@@ -405,7 +403,6 @@ body {
   background: rgba(63, 208, 255, 0.12);
   border: 1px solid var(--accent-soft);
   color: var(--accent);
-  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -514,7 +511,6 @@ body {
 }
 
 .workout-time {
-  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   font-size: 1.05rem;
   font-weight: 700;
@@ -754,7 +750,6 @@ body {
 
 .active-title {
   margin: 0;
-  font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
   letter-spacing: -0.025em;
@@ -981,7 +976,6 @@ body {
 }
 
 .workout-timer-name {
-  font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: 0.01em;
@@ -998,7 +992,6 @@ body {
 }
 
 .workout-timer-time {
-  font-family: var(--font-display);
   font-size: clamp(1.7rem, 3vw, 2.4rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1098,7 +1091,6 @@ body {
 
 .modal-header h2 {
   margin: 0;
-  font-family: var(--font-display);
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.01em;
@@ -1444,7 +1436,6 @@ body {
 /* Stand Up Alert Styles */
 
 .standup-timer {
-  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   font-size: 1rem;
   font-weight: 700;
@@ -1573,7 +1564,6 @@ body {
 
 .standup-header h3 {
   margin: 0;
-  font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
