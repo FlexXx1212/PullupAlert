@@ -1520,12 +1520,14 @@ function renderOverview() {
   updateDateNavUI();
   if (!container) return;
   container.innerHTML = "";
+  void container.offsetWidth; // force reflow so cardReveal animation always restarts
   const now = new Date();
   const completions = loadCompletions();
   const activeDateKey = getDateKey(activeDate);
   const isTodayView = isViewingToday();
   const isPastView = activeDate < startOfDay(new Date());
 
+  let cardIndex = 0;
   workouts.forEach((workout) => {
     if (isCategoryHidden(workout.categoryId)) return;
     const isRepeating = isRepeatingWorkout(workout);
@@ -1537,6 +1539,8 @@ function renderOverview() {
 
     const card = document.createElement("article");
     card.className = "workout-card";
+    card.style.animationDelay = `${cardIndex * 60}ms`;
+    cardIndex++;
     if (isCompleted) card.classList.add("workout-card--completed");
     if (!isOnSelectedDay && !isCompleted) card.classList.add("workout-card--not-today");
     card.dataset.workoutId = workout.id;
