@@ -472,7 +472,7 @@ body {
   gap: 10px;
   transition: transform var(--transition-med), box-shadow var(--transition-med),
     border-color var(--transition-med), background var(--transition-med);
-  animation: cardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: cardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .workout-card:nth-child(1)  { animation-delay: 0ms; }
