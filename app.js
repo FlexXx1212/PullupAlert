@@ -2145,7 +2145,7 @@ function createTimerEditorRow(timer, container) {
   secondarySecondsLabel.appendChild(secondarySecondsInput);
   secondarySecondsLabel.append("Sek. extra");
 
-  const repeatLabel = document.createElement("label");
+  const repeatLabel = document.createElement("div");
   repeatLabel.className = "timer-repeat";
 
   const repeatText = document.createElement("span");
