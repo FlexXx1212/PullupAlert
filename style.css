@@ -460,6 +460,17 @@ body {
   }
 }
 
+@keyframes cardRevealDimmed {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 0.5;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .workout-card {
   position: relative;
   padding: 16px 16px 14px;
@@ -486,12 +497,14 @@ body {
 .workout-card--completed {
   opacity: 0.5;
   filter: grayscale(0.6);
+  animation-name: cardRevealDimmed;
 }
 
 /* Markierung für Workouts, die heute nicht stattfinden */
 .workout-card--not-today {
   opacity: 0.5;
   filter: grayscale(0.4);
+  animation-name: cardRevealDimmed;
 }
 
 .workout-card-header {
