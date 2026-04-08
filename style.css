@@ -916,7 +916,7 @@ body {
   color: #6dffb0;
   font-weight: 700;
   display: inline-block;
-  min-width: 3.5ch;
+  width: 6ch;
   margin-left: 4px;
 }
 
