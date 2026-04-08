@@ -908,20 +908,14 @@ body {
   background: rgba(63, 208, 255, 0.18);
 }
 
-.exercise-adjustable-number__original {
+.exercise-adjustable-number__value {
   opacity: 0.85;
 }
 
-.exercise-adjustable-number__new {
+.exercise-adjustable-number__value--changed {
   color: #6dffb0;
   font-weight: 700;
-  display: inline-block;
-  width: 4ch;
-  margin-left: 4px;
-}
-
-.exercise-adjustable-number__new--hidden {
-  visibility: hidden;
+  opacity: 1;
 }
 
 /* Timer & Footer */
