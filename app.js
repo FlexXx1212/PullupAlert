@@ -507,10 +507,9 @@ function buildAdjustableNumberElement(lineIndex, markerIndex, originalValue) {
   const value = getAdjustedValue(lineIndex, markerIndex, originalValue);
   const valueLabel = document.createElement("span");
   valueLabel.className = "exercise-adjustable-number__value";
+  valueLabel.textContent = String(value);
   if (value !== originalValue) {
-    valueLabel.innerHTML = `<span class="exercise-adjustable-number__original">${originalValue}</span><span class="exercise-adjustable-number__new"> (${value})</span>`;
-  } else {
-    valueLabel.textContent = String(originalValue);
+    valueLabel.classList.add("exercise-adjustable-number__value--changed");
   }
 
   const controls = document.createElement("span");
