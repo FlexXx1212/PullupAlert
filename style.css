@@ -915,6 +915,13 @@ body {
 .exercise-adjustable-number__new {
   color: #6dffb0;
   font-weight: 700;
+  display: inline-block;
+  min-width: 3.5ch;
+  margin-left: 4px;
+}
+
+.exercise-adjustable-number__new--hidden {
+  visibility: hidden;
 }
 
 /* Timer & Footer */
