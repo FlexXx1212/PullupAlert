@@ -3198,14 +3198,21 @@ async function requestMicPermissionAndEnable() {
   }
 }
 
+async function isBraveBrowser() {
+  try {
+    return !!navigator.brave && await navigator.brave.isBrave();
+  } catch {
+    return false;
+  }
+}
+
 function initVoiceCommandsLogic() {
   loadVoiceCommandsSettings();
 
-  const section = $("#voiceCommandsSection");
   const toggleLabel = $("#voiceCommandsToggleLabel");
   const toggle = $("#voiceCommandsToggle");
   const unsupported = $("#voiceCommandsUnsupported");
-  const hint = $("#voiceCommandsHint");
+  const braveEl = $("#voiceCommandsBrave");
 
   if (!isSpeechRecognitionSupported()) {
     if (unsupported) unsupported.style.display = "block";
@@ -3213,30 +3220,40 @@ function initVoiceCommandsLogic() {
     return;
   }
 
-  initVoiceRecognition();
+  isBraveBrowser().then(isBrave => {
+    if (isBrave) {
+      if (braveEl) braveEl.style.display = "block";
+      if (toggleLabel) toggleLabel.style.display = "none";
+      voiceCommandsEnabled = false;
+      saveVoiceCommandsSettings();
+      return;
+    }
 
-  if (toggle) {
-    toggle.checked = voiceCommandsEnabled;
-    toggle.addEventListener("change", async (e) => {
-      if (e.target.checked) {
-        const errorEl = $("#voiceCommandsError");
-        if (errorEl) errorEl.style.display = "none";
-        voiceErrorCount = 0;
-        voiceRetryDelay = 2000;
-        await requestMicPermissionAndEnable();
-        toggle.checked = voiceCommandsEnabled;
-      } else {
-        voiceCommandsEnabled = false;
-        saveVoiceCommandsSettings();
-        stopVoiceRecognition();
-        updateVoiceCommandsHint();
-      }
-    });
-  }
+    initVoiceRecognition();
 
-  updateVoiceCommandsHint();
+    if (toggle) {
+      toggle.checked = voiceCommandsEnabled;
+      toggle.addEventListener("change", async (e) => {
+        if (e.target.checked) {
+          const errorEl = $("#voiceCommandsError");
+          if (errorEl) errorEl.style.display = "none";
+          voiceErrorCount = 0;
+          voiceRetryDelay = 2000;
+          await requestMicPermissionAndEnable();
+          toggle.checked = voiceCommandsEnabled;
+        } else {
+          voiceCommandsEnabled = false;
+          saveVoiceCommandsSettings();
+          stopVoiceRecognition();
+          updateVoiceCommandsHint();
+        }
+      });
+    }
 
-  if (voiceCommandsEnabled && isWorkoutViewOpen()) {
-    startVoiceRecognition();
-  }
+    updateVoiceCommandsHint();
+
+    if (voiceCommandsEnabled && isWorkoutViewOpen()) {
+      startVoiceRecognition();
+    }
+  });
 }
