@@ -7,6 +7,7 @@ const STORAGE_KEY = "pullup-alert-completions";
 const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
 const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
 const STANDUP_STATE_KEY = "pullup-alert-standup-state";
+const VOICE_COMMANDS_KEY = "pullup-alert-voice-commands";
 
 const EXPORTABLE_STORAGE_KEYS = [
   SETTINGS_KEY,
@@ -14,7 +15,8 @@ const EXPORTABLE_STORAGE_KEYS = [
   STORAGE_KEY,
   REPEATING_COMPLETION_COUNTS_KEY,
   STANDUP_SETTINGS_KEY,
-  STANDUP_STATE_KEY
+  STANDUP_STATE_KEY,
+  VOICE_COMMANDS_KEY
 ];
 
 const persistenceState = {
@@ -1691,6 +1693,7 @@ function showActiveWorkout(workout) {
     stopActiveTimer({ reset: true });
   }
   showView("activeView");
+  startVoiceRecognition();
 }
 
 function updateExerciseListSizing(list, count) {
@@ -1737,6 +1740,7 @@ function markCurrentWorkoutCompleted() {
   }
   stopActiveTimer({ reset: true });
   allowTimerControls = false;
+  stopVoiceRecognition();
   stopTitleBlink();
   showView("overviewView");
   renderOverview(true);
@@ -2560,6 +2564,7 @@ function setupEventListeners() {
     stopActiveTimer({ reset: true });
     allowTimerControls = false;
     pendingExerciseNumberAdjustments = {};
+    stopVoiceRecognition();
     showView("overviewView");
     stopTitleBlink();
     document.title = BASE_TITLE;
@@ -2706,6 +2711,8 @@ async function initApp() {
 
   // Stand Up Alert Logic starten
   initStandUpLogic();
+  // Voice Commands Logic starten
+  initVoiceCommandsLogic();
   appIsReady = true;
 }
 
@@ -2945,5 +2952,144 @@ function notifyStandUp(title, body) {
       window.focus();
       } catch (_) { }
     };
+  }
+}
+
+/* ---------------------------------------------------------
+   VOICE COMMANDS LOGIC
+   --------------------------------------------------------- */
+
+let voiceCommandsEnabled = false;
+let voiceRecognition = null;
+let voiceRecognitionActive = false;
+
+function isSpeechRecognitionSupported() {
+  return typeof window !== "undefined" &&
+    (typeof window.SpeechRecognition !== "undefined" || typeof window.webkitSpeechRecognition !== "undefined");
+}
+
+function loadVoiceCommandsSettings() {
+  try {
+    const raw = getStorageRaw(VOICE_COMMANDS_KEY);
+    if (raw) voiceCommandsEnabled = JSON.parse(raw) === true;
+  } catch { }
+}
+
+function saveVoiceCommandsSettings() {
+  setStorageJson(VOICE_COMMANDS_KEY, voiceCommandsEnabled);
+}
+
+function initVoiceRecognition() {
+  if (!isSpeechRecognitionSupported()) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceRecognition = new SR();
+  voiceRecognition.lang = "de-DE";
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = false;
+
+  voiceRecognition.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (!event.results[i].isFinal) continue;
+      const transcript = event.results[i][0].transcript.trim().toLowerCase();
+      if (!isWorkoutViewOpen() || !allowTimerControls) continue;
+      if (transcript.includes("timer start")) {
+        if (activeTimerId) startTimer(activeTimerId);
+      } else if (transcript.includes("timer stop")) {
+        if (activeTimerId) stopTimer(activeTimerId, { reset: true });
+      }
+    }
+  };
+
+  voiceRecognition.onend = () => {
+    voiceRecognitionActive = false;
+    if (voiceCommandsEnabled && isWorkoutViewOpen()) {
+      try { voiceRecognition.start(); voiceRecognitionActive = true; } catch { }
+    }
+  };
+
+  voiceRecognition.onerror = (event) => {
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      voiceCommandsEnabled = false;
+      saveVoiceCommandsSettings();
+      const toggle = $("#voiceCommandsToggle");
+      if (toggle) toggle.checked = false;
+      updateVoiceCommandsHint();
+    }
+  };
+}
+
+function startVoiceRecognition() {
+  if (!voiceCommandsEnabled || !voiceRecognition || voiceRecognitionActive) return;
+  try {
+    voiceRecognition.start();
+    voiceRecognitionActive = true;
+  } catch { }
+}
+
+function stopVoiceRecognition() {
+  if (!voiceRecognition) return;
+  voiceRecognitionActive = false;
+  try { voiceRecognition.stop(); } catch { }
+}
+
+function updateVoiceCommandsHint() {
+  const hint = $("#voiceCommandsHint");
+  const toggle = $("#voiceCommandsToggle");
+  if (hint) hint.style.display = (voiceCommandsEnabled && toggle?.checked) ? "block" : "none";
+}
+
+async function requestMicPermissionAndEnable() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+    voiceCommandsEnabled = true;
+    saveVoiceCommandsSettings();
+    if (isWorkoutViewOpen()) startVoiceRecognition();
+    updateVoiceCommandsHint();
+  } catch {
+    voiceCommandsEnabled = false;
+    saveVoiceCommandsSettings();
+    const toggle = $("#voiceCommandsToggle");
+    if (toggle) toggle.checked = false;
+    updateVoiceCommandsHint();
+  }
+}
+
+function initVoiceCommandsLogic() {
+  loadVoiceCommandsSettings();
+
+  const section = $("#voiceCommandsSection");
+  const toggleLabel = $("#voiceCommandsToggleLabel");
+  const toggle = $("#voiceCommandsToggle");
+  const unsupported = $("#voiceCommandsUnsupported");
+  const hint = $("#voiceCommandsHint");
+
+  if (!isSpeechRecognitionSupported()) {
+    if (unsupported) unsupported.style.display = "block";
+    if (toggleLabel) toggleLabel.style.display = "none";
+    return;
+  }
+
+  initVoiceRecognition();
+
+  if (toggle) {
+    toggle.checked = voiceCommandsEnabled;
+    toggle.addEventListener("change", async (e) => {
+      if (e.target.checked) {
+        await requestMicPermissionAndEnable();
+        toggle.checked = voiceCommandsEnabled;
+      } else {
+        voiceCommandsEnabled = false;
+        saveVoiceCommandsSettings();
+        stopVoiceRecognition();
+        updateVoiceCommandsHint();
+      }
+    });
+  }
+
+  updateVoiceCommandsHint();
+
+  if (voiceCommandsEnabled && isWorkoutViewOpen()) {
+    startVoiceRecognition();
   }
 }
