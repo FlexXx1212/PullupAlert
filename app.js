@@ -2965,6 +2965,7 @@ let voiceRecognitionActive = false;
 let voiceRetryTimeout = null;
 let voiceRetryDelay = 2000;
 let voiceErrorCount = 0;
+const VOICE_MAX_NETWORK_ERRORS = 5;
 
 function voiceLog(level, ...args) {
   const ts = new Date().toISOString().slice(11, 23);
@@ -3106,6 +3107,12 @@ function createVoiceRecognitionInstance() {
         return;
       }
       if (voiceErrorCount === 1) voiceDiagnostics();
+      if (voiceErrorCount >= VOICE_MAX_NETWORK_ERRORS) {
+        voiceLog("warn", `Max retries (${VOICE_MAX_NETWORK_ERRORS}) reached – disabling voice commands and showing error`);
+        stopVoiceRecognition();
+        showVoiceCommandsNetworkError();
+        return;
+      }
       voiceLog("log", `Scheduling retry #${voiceErrorCount} in ${voiceRetryDelay}ms…`);
       const delay = voiceRetryDelay;
       voiceRetryDelay = Math.min(voiceRetryDelay * 2, 30000);
@@ -3157,8 +3164,21 @@ function stopVoiceRecognition() {
 
 function updateVoiceCommandsHint() {
   const hint = $("#voiceCommandsHint");
+  const errorEl = $("#voiceCommandsError");
   const toggle = $("#voiceCommandsToggle");
   if (hint) hint.style.display = (voiceCommandsEnabled && toggle?.checked) ? "block" : "none";
+  if (errorEl) errorEl.style.display = "none";
+}
+
+function showVoiceCommandsNetworkError() {
+  const hint = $("#voiceCommandsHint");
+  const errorEl = $("#voiceCommandsError");
+  const toggle = $("#voiceCommandsToggle");
+  if (hint) hint.style.display = "none";
+  if (errorEl) errorEl.style.display = "block";
+  if (toggle) toggle.checked = false;
+  voiceCommandsEnabled = false;
+  saveVoiceCommandsSettings();
 }
 
 async function requestMicPermissionAndEnable() {
@@ -3199,6 +3219,10 @@ function initVoiceCommandsLogic() {
     toggle.checked = voiceCommandsEnabled;
     toggle.addEventListener("change", async (e) => {
       if (e.target.checked) {
+        const errorEl = $("#voiceCommandsError");
+        if (errorEl) errorEl.style.display = "none";
+        voiceErrorCount = 0;
+        voiceRetryDelay = 2000;
         await requestMicPermissionAndEnable();
         toggle.checked = voiceCommandsEnabled;
       } else {
