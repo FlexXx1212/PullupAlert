@@ -3004,77 +3004,81 @@ async function voiceDiagnostics() {
   voiceLog("log", "===================");
 }
 
-function initVoiceRecognition() {
-  if (!isSpeechRecognitionSupported()) return;
+function createVoiceRecognitionInstance() {
+  if (!isSpeechRecognitionSupported()) return null;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  voiceRecognition = new SR();
-  voiceRecognition.lang = "de-DE";
-  voiceRecognition.continuous = true;
-  voiceRecognition.interimResults = false;
-  voiceLog("log", "Recognition object created (lang=de-DE, continuous=true, interimResults=false)");
+  const recognition = new SR();
+  recognition.lang = "de-DE";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 3;
+  voiceLog("log", "New recognition instance created (lang=de-DE, continuous=false)");
 
-  voiceRecognition.onresult = (event) => {
+  recognition.onresult = (event) => {
     voiceRetryDelay = 2000;
     voiceErrorCount = 0;
     for (let i = event.resultIndex; i < event.results.length; i++) {
       if (!event.results[i].isFinal) continue;
-      const transcript = event.results[i][0].transcript.trim().toLowerCase();
+      const alts = Array.from({ length: event.results[i].length }, (_, j) => event.results[i][j].transcript.trim().toLowerCase());
       const confidence = event.results[i][0].confidence;
-      voiceLog("log", `Heard: "${transcript}" (confidence: ${(confidence * 100).toFixed(0)}%, workoutViewOpen=${isWorkoutViewOpen()}, allowTimerControls=${allowTimerControls}, activeTimerId=${activeTimerId})`);
+      voiceLog("log", `Heard: "${alts[0]}" (confidence: ${(confidence * 100).toFixed(0)}%, alternatives: [${alts.slice(1).join(", ")}])`);
+      voiceLog("log", `  workoutViewOpen=${isWorkoutViewOpen()}, allowTimerControls=${allowTimerControls}, activeTimerId=${activeTimerId}`);
       if (!isWorkoutViewOpen() || !allowTimerControls) {
         voiceLog("log", "Ignored – workout view not active or timer controls disabled");
         continue;
       }
-      if (transcript.includes("timer start")) {
+      const matched = alts.find(t => t.includes("timer start") || t.includes("timer stop"));
+      if (!matched) {
+        voiceLog("log", `No match in any alternative — expected 'timer start' or 'timer stop'`);
+        continue;
+      }
+      if (matched.includes("timer start")) {
         voiceLog("log", "→ Command: timer start");
         if (activeTimerId) startTimer(activeTimerId);
         else voiceLog("warn", "No activeTimerId set!");
-      } else if (transcript.includes("timer stop")) {
+      } else {
         voiceLog("log", "→ Command: timer stop");
         if (activeTimerId) stopTimer(activeTimerId, { reset: true });
         else voiceLog("warn", "No activeTimerId set!");
-      } else {
-        voiceLog("log", `No match for "${transcript}" — expected 'timer start' or 'timer stop'`);
       }
     }
   };
 
-  voiceRecognition.onstart = () => {
+  recognition.onstart = () => {
     voiceLog("log", `Started listening (retryDelay=${voiceRetryDelay}ms, errorCount=${voiceErrorCount})`);
   };
 
-  voiceRecognition.onspeechstart = () => {
+  recognition.onspeechstart = () => {
     voiceLog("log", "Speech detected – audio input is working");
   };
 
-  voiceRecognition.onsoundstart = () => {
-    voiceLog("log", "Sound detected (not necessarily speech)");
+  recognition.onsoundstart = () => {
+    voiceLog("log", "Sound detected");
   };
 
-  voiceRecognition.onsoundend = () => {
+  recognition.onsoundend = () => {
     voiceLog("log", "Sound ended");
   };
 
-  voiceRecognition.onspeechend = () => {
+  recognition.onspeechend = () => {
     voiceLog("log", "Speech ended");
   };
 
-  voiceRecognition.onnomatch = () => {
+  recognition.onnomatch = () => {
     voiceLog("log", "no-match: speech detected but could not be transcribed");
   };
 
-  voiceRecognition.onend = () => {
+  recognition.onend = () => {
     voiceRecognitionActive = false;
+    voiceRecognition = null;
     voiceLog("log", `Recognition ended (enabled=${voiceCommandsEnabled}, workoutViewOpen=${isWorkoutViewOpen()}, retryPending=${!!voiceRetryTimeout})`);
     if (voiceCommandsEnabled && isWorkoutViewOpen() && !voiceRetryTimeout) {
-      voiceLog("log", "Auto-restarting…");
-      try { voiceRecognition.start(); voiceRecognitionActive = true; } catch (e) {
-        voiceLog("warn", `Auto-restart failed: ${e.message}`);
-      }
+      voiceLog("log", "Session ended normally – starting next session…");
+      startVoiceRecognition();
     }
   };
 
-  voiceRecognition.onerror = (event) => {
+  recognition.onerror = (event) => {
     voiceErrorCount++;
     voiceLog("warn", `Error #${voiceErrorCount}: "${event.error}" | online=${navigator.onLine} | retryDelay=${voiceRetryDelay}ms`);
     voiceRecognitionActive = false;
@@ -3090,18 +3094,15 @@ function initVoiceRecognition() {
     }
 
     if (event.error === "no-speech") {
-      voiceLog("log", "no-speech: nothing heard in this session, restarting immediately");
-      if (!voiceCommandsEnabled || !isWorkoutViewOpen() || voiceRetryTimeout) return;
-      try { voiceRecognition.start(); voiceRecognitionActive = true; } catch (e) {
-        voiceLog("warn", `Restart after no-speech failed: ${e.message}`);
-      }
+      voiceLog("log", "no-speech: silence detected, restarting session immediately");
+      // onend fires after this, which will call startVoiceRecognition() normally
       return;
     }
 
     if (event.error === "network" || event.error === "audio-capture" || event.error === "aborted") {
       if (!voiceCommandsEnabled || !isWorkoutViewOpen()) return;
       if (voiceRetryTimeout) {
-        voiceLog("log", `Retry already scheduled, skipping`);
+        voiceLog("log", "Retry already scheduled, skipping");
         return;
       }
       if (voiceErrorCount === 1) voiceDiagnostics();
@@ -3112,23 +3113,30 @@ function initVoiceRecognition() {
         voiceRetryTimeout = null;
         if (voiceCommandsEnabled && isWorkoutViewOpen()) {
           voiceLog("log", `Executing retry (errorCount=${voiceErrorCount})…`);
-          try { voiceRecognition.start(); voiceRecognitionActive = true; } catch (e) {
-            voiceLog("warn", `Retry start() failed: ${e.message}`);
-          }
+          startVoiceRecognition();
         }
       }, delay);
     }
   };
+
+  return recognition;
+}
+
+function initVoiceRecognition() {
+  // No-op: instances are created fresh on each startVoiceRecognition() call
 }
 
 function startVoiceRecognition() {
-  voiceLog("log", `startVoiceRecognition() — enabled=${voiceCommandsEnabled}, active=${voiceRecognitionActive}, hasInstance=${!!voiceRecognition}`);
-  if (!voiceCommandsEnabled || !voiceRecognition || voiceRecognitionActive) return;
+  voiceLog("log", `startVoiceRecognition() — enabled=${voiceCommandsEnabled}, active=${voiceRecognitionActive}`);
+  if (!voiceCommandsEnabled || !isSpeechRecognitionSupported() || voiceRecognitionActive) return;
+  voiceRecognition = createVoiceRecognitionInstance();
+  if (!voiceRecognition) return;
   try {
     voiceRecognition.start();
     voiceRecognitionActive = true;
   } catch (e) {
     voiceLog("warn", `start() failed: ${e.message}`);
+    voiceRecognition = null;
   }
 }
 
@@ -3140,9 +3148,11 @@ function stopVoiceRecognition() {
   }
   voiceRetryDelay = 2000;
   voiceErrorCount = 0;
-  if (!voiceRecognition) return;
   voiceRecognitionActive = false;
-  try { voiceRecognition.stop(); } catch { }
+  if (voiceRecognition) {
+    try { voiceRecognition.onend = null; voiceRecognition.stop(); } catch { }
+    voiceRecognition = null;
+  }
 }
 
 function updateVoiceCommandsHint() {
