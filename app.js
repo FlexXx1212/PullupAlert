@@ -1506,6 +1506,26 @@ function updateWorkout(id, workoutData) {
   renderOverview(true);
 }
 
+function cloneWorkout(id) {
+  const sourceWorkout = workouts.find((workout) => workout.id === id);
+  if (!sourceWorkout) return null;
+
+  const clonedWorkoutData = {
+    title: `${sourceWorkout.title} - Kopie`,
+    categoryId: sourceWorkout.categoryId || "",
+    time: sourceWorkout.time,
+    repeating: Boolean(sourceWorkout.repeating),
+    repeatIntervalMinutes: getRepeatMinutes(sourceWorkout),
+    days: Array.isArray(sourceWorkout.days) ? [...sourceWorkout.days] : [],
+    exercises: Array.isArray(sourceWorkout.exercises) ? [...sourceWorkout.exercises] : [],
+    timers: normalizeWorkoutTimers(sourceWorkout.timers || [], getFallbackTimerDuration()),
+    completed: false
+  };
+
+  addWorkout(clonedWorkoutData);
+  return workouts.find((workout) => workout.title === clonedWorkoutData.title && workout.id !== id) || null;
+}
+
 function deleteWorkout(id) {
   if (!confirm("Wirklich löschen?")) return;
   workouts = workouts.filter(w => w.id !== id);
@@ -1907,6 +1927,7 @@ function openModal(workout = null) {
   const modal = $("#workoutModal");
   const form = $("#workoutForm");
   const deleteBtn = $("#deleteWorkoutBtn");
+  const cloneBtn = $("#cloneWorkoutBtn");
   const title = $("#modalTitle");
   const toggleBtn = $("#toggleCompletionBtn");
   const repeatToggle = $("#wfRepeating");
@@ -1963,6 +1984,14 @@ function openModal(workout = null) {
       closeModal();
     };
 
+    if (cloneBtn) {
+      cloneBtn.style.display = "inline-flex";
+      cloneBtn.onclick = () => {
+        cloneWorkout(workout.id);
+        closeModal();
+      };
+    }
+
     toggleBtn.style.display = "inline-flex";
     const completionState = isRepeatingWorkout(workout) ? false : isWorkoutCompleted(workout.id, activeDate);
     setToggleCompletionButtonState(completionState ? "completed" : "pending");
@@ -1970,6 +1999,10 @@ function openModal(workout = null) {
     // Create Mode
     title.textContent = "Neues Workout";
     deleteBtn.style.display = "none";
+    if (cloneBtn) {
+      cloneBtn.style.display = "none";
+      cloneBtn.onclick = null;
+    }
     toggleBtn.style.display = "inline-flex";
     setToggleCompletionButtonState("pending");
     // Default: Alle Tage ausgewählt
