@@ -1177,6 +1177,10 @@ body {
   font-size: 1rem;
 }
 
+#wfExercises {
+  resize: vertical;
+}
+
 .form-group input:disabled,
 .form-group select:disabled,
 .form-group textarea:disabled {
