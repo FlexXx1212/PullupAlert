@@ -99,6 +99,16 @@
   cursor: not-allowed;
 }
 
+.notification-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-elevated-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+}
+
 .settings-form label {
   color: var(--text-muted);
   font-size: 1rem;
