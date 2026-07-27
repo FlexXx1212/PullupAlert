@@ -263,6 +263,22 @@
 
           <div class="settings-section">
             <h3>Allgemeine Einstellungen</h3>
+            <div class="notification-settings" aria-label="Benachrichtigungseinstellungen">
+              <div class="setting-group">
+                <label for="notificationsEnabled">Benachrichtigungen</label>
+                <label class="switch">
+                  <input type="checkbox" id="notificationsEnabled">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+              <div class="setting-group" id="repeatNotificationsGroup">
+                <label for="repeatNotificationsEnabled">Alle 30 Minuten erneut benachrichtigen</label>
+                <label class="switch">
+                  <input type="checkbox" id="repeatNotificationsEnabled">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
             <p class="hint-small">
               Kategorien können optional bei Workouts ausgewählt werden. Aktive Kategorien erscheinen in der Übersicht
               und lösen Erinnerungen aus.

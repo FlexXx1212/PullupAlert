@@ -333,6 +333,27 @@ function saveSettings(settings) {
   } catch { }
 }
 
+function getNotificationSettings() {
+  const settings = loadSettings();
+  return {
+    enabled: settings.notificationsEnabled !== false,
+    repeatEnabled: settings.repeatNotificationsEnabled !== false
+  };
+}
+
+function syncNotificationSettingsControls() {
+  const enabledToggle = $("#notificationsEnabled");
+  const repeatToggle = $("#repeatNotificationsEnabled");
+  const repeatGroup = $("#repeatNotificationsGroup");
+  if (!enabledToggle || !repeatToggle) return;
+
+  const notificationSettings = getNotificationSettings();
+  enabledToggle.checked = notificationSettings.enabled;
+  repeatToggle.checked = notificationSettings.repeatEnabled;
+  repeatToggle.disabled = !notificationSettings.enabled;
+  repeatGroup?.classList.toggle("setting-group--disabled", !notificationSettings.enabled);
+}
+
 function sanitizePrefix(prefix) {
   return (prefix || "")
     .toString()
@@ -652,6 +673,7 @@ let pendingExerciseNumberAdjustments = {};
 
 // ---- Notification API ----
 function requestNotificationPermission() {
+  if (!getNotificationSettings().enabled) return;
   if (typeof Notification === "undefined") return;
   if (Notification.permission === "default") {
     try {
@@ -668,6 +690,7 @@ function requestNotificationPermission() {
 }
 
 function sendWorkoutNotification(workout, isReminder) {
+  if (!getNotificationSettings().enabled) return;
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
   const title = isReminder ? "Workout Erinnerung" : "Workout jetzt starten";
@@ -1869,6 +1892,8 @@ function setupResumeRefreshListeners() {
 
 function triggerWorkoutAlert(workout, isReminder) {
   if (isWorkoutViewOpen()) return false;
+  const notificationSettings = getNotificationSettings();
+  if (!notificationSettings.enabled || (isReminder && !notificationSettings.repeatEnabled)) return false;
   playAlertSound();
   startTitleBlink();
   sendWorkoutNotification(workout, isReminder);
@@ -2052,6 +2077,7 @@ function closeModal() {
 function openSettingsModal() {
   const modal = $("#settingsModal");
   if (!modal) return;
+  syncNotificationSettingsControls();
   modal.classList.remove("modal--hidden");
   modal.setAttribute("aria-hidden", "false");
 }
@@ -2663,6 +2689,23 @@ function setupEventListeners() {
   }
   if (settingsBackdrop) {
     settingsBackdrop.addEventListener("click", closeSettingsModal);
+  }
+
+  const notificationsEnabled = $("#notificationsEnabled");
+  const repeatNotificationsEnabled = $("#repeatNotificationsEnabled");
+  if (notificationsEnabled) {
+    notificationsEnabled.addEventListener("change", () => {
+      const settings = loadSettings();
+      saveSettings({ ...settings, notificationsEnabled: notificationsEnabled.checked });
+      syncNotificationSettingsControls();
+      if (notificationsEnabled.checked) requestNotificationPermission();
+    });
+  }
+  if (repeatNotificationsEnabled) {
+    repeatNotificationsEnabled.addEventListener("change", () => {
+      const settings = loadSettings();
+      saveSettings({ ...settings, repeatNotificationsEnabled: repeatNotificationsEnabled.checked });
+    });
   }
 
   const exportDataBtn = $("#exportDataBtn");
