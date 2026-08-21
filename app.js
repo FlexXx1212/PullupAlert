@@ -7,6 +7,7 @@ const STORAGE_KEY = "pullup-alert-completions";
 const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
 const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
 const STANDUP_STATE_KEY = "pullup-alert-standup-state";
+const MAX_TIMER_DURATION_SECONDS = 9999;
 
 const EXPORTABLE_STORAGE_KEYS = [
   SETTINGS_KEY,
@@ -2180,7 +2181,7 @@ function createTimerEditorRow(timer, container) {
   const secondsInput = document.createElement("input");
   secondsInput.type = "number";
   secondsInput.min = "1";
-  secondsInput.max = "999";
+  secondsInput.max = String(MAX_TIMER_DURATION_SECONDS);
   secondsInput.className = "timer-seconds-input";
   secondsInput.value = timer.durationSeconds || getFallbackTimerDuration();
 
@@ -2192,7 +2193,7 @@ function createTimerEditorRow(timer, container) {
   const secondarySecondsInput = document.createElement("input");
   secondarySecondsInput.type = "number";
   secondarySecondsInput.min = "0";
-  secondarySecondsInput.max = "999";
+  secondarySecondsInput.max = String(MAX_TIMER_DURATION_SECONDS);
   secondarySecondsInput.className = "timer-seconds-input timer-secondary-seconds-input";
   secondarySecondsInput.value = Number.isFinite(timer.secondaryDurationSeconds)
     ? Math.max(0, timer.secondaryDurationSeconds)
@@ -2291,9 +2292,9 @@ function handleModalSubmit(e) {
     let duration = parseInt(secondsInput?.value, 10);
     let secondaryDuration = parseInt(secondarySecondsInput?.value, 10);
     if (isNaN(duration) || duration < 1) duration = getFallbackTimerDuration();
-    if (duration > 999) duration = 999;
+    if (duration > MAX_TIMER_DURATION_SECONDS) duration = MAX_TIMER_DURATION_SECONDS;
     if (isNaN(secondaryDuration) || secondaryDuration < 0) secondaryDuration = 0;
-    if (secondaryDuration > 999) secondaryDuration = 999;
+    if (secondaryDuration > MAX_TIMER_DURATION_SECONDS) secondaryDuration = MAX_TIMER_DURATION_SECONDS;
 
     return {
       id: row.dataset.timerId || createTimerId(),
