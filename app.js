@@ -7,6 +7,7 @@ const STORAGE_KEY = "pullup-alert-completions";
 const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
 const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
 const STANDUP_STATE_KEY = "pullup-alert-standup-state";
+const COUNTER_RESULTS_KEY = "pullup-alert-counter-results";
 const MAX_TIMER_DURATION_SECONDS = 9999;
 
 const EXPORTABLE_STORAGE_KEYS = [
@@ -15,7 +16,8 @@ const EXPORTABLE_STORAGE_KEYS = [
   STORAGE_KEY,
   REPEATING_COMPLETION_COUNTS_KEY,
   STANDUP_SETTINGS_KEY,
-  STANDUP_STATE_KEY
+  STANDUP_STATE_KEY,
+  COUNTER_RESULTS_KEY
 ];
 
 const persistenceState = {
@@ -667,10 +669,24 @@ let activeTimerId = null;
 let timerStateById = {};
 let activeTimerAudios = new Set();
 let allowTimerControls = false;
+let allowCounterControls = false;
+let currentCounterValue = 0;
+let previousCounterValue = 0;
 let activeDate = startOfDay(new Date());
 let lastKnownTodayKey = getTodayKey();
 let lastRepeatingLabelRefreshAt = 0;
 let pendingExerciseNumberAdjustments = {};
+let pendingWorkoutMode = "timer";
+
+function normalizeWorkoutMode(mode) {
+  return mode === "counter" ? "counter" : "timer";
+}
+
+function setWorkoutModeEditorValue(mode) {
+  pendingWorkoutMode = normalizeWorkoutMode(mode);
+  const select = $("#wfWorkoutMode");
+  if (select) select.value = pendingWorkoutMode;
+}
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -1165,13 +1181,17 @@ function handleTimerFinished(timer) {
   updateTimerCards();
 }
 
-function startTimer(timerId) {
+function startTimer(timerId, { resume = false } = {}) {
   const timer = currentWorkout?.timers?.find(t => t.id === timerId);
   if (!timer) return;
 
-  stopActiveTimer({ reset: true });
+  if (activeTimerId !== timerId) {
+    stopActiveTimer({ reset: true });
+  } else {
+    clearActiveTimerInterval();
+  }
   activeTimerId = timerId;
-  resetTimer(timerId);
+  if (!resume) resetTimer(timerId);
   setTimerState(timerId, { isRunning: true });
   updateTimerCards();
 
@@ -1200,9 +1220,9 @@ function toggleActiveTimer() {
   const state = getTimerState(activeTimerId);
   if (!state) return;
   if (state.isRunning) {
-    stopTimer(activeTimerId, { reset: true });
+    stopTimer(activeTimerId, { reset: currentWorkout?.workoutMode !== "counter" });
   } else {
-    startTimer(activeTimerId);
+    startTimer(activeTimerId, { resume: currentWorkout?.workoutMode === "counter" });
   }
 }
 
@@ -1288,6 +1308,42 @@ function renderWorkoutTimers(workout) {
 function updateTimerCards() {
   if (!currentWorkout) return;
   renderWorkoutTimers(currentWorkout);
+  renderWorkoutCounter();
+}
+
+function loadCounterResults() {
+  try {
+    return JSON.parse(getStorageRaw(COUNTER_RESULTS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function getPreviousCounterValue(workoutId) {
+  const value = Number(loadCounterResults()[workoutId]);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+}
+
+function saveCounterResult(workoutId, value) {
+  setStorageJson(COUNTER_RESULTS_KEY, {
+    ...loadCounterResults(),
+    [workoutId]: Math.max(0, Math.floor(value))
+  });
+}
+
+function renderWorkoutCounter() {
+  const container = $("#workoutTimers");
+  if (!container || currentWorkout?.workoutMode !== "counter") return;
+
+  const counter = document.createElement("section");
+  counter.className = "workout-counter";
+  counter.setAttribute("aria-label", "Rundenzähler");
+  counter.innerHTML = `
+    <span class="workout-counter-label">Runden</span>
+    <strong class="workout-counter-value" aria-live="polite">${currentCounterValue}/${previousCounterValue}</strong>
+    <span class="workout-counter-hint">Leertaste +1 · Backspace −1</span>
+  `;
+  container.prepend(counter);
 }
 
 // ---- WORKOUT MANAGEMENT ----
@@ -1401,6 +1457,7 @@ async function loadWorkouts() {
       repeatIntervalMinutes,
       nextDueAt,
       timers: normalizeWorkoutTimers(w.timers, fallbackTimerDuration),
+      workoutMode: normalizeWorkoutMode(w.workoutMode),
       dateTime,
       days: daysArr,
       daysIndex,
@@ -1436,6 +1493,7 @@ function saveWorkoutsToStorage(workoutsData) {
     days: w.days,
     exercises: w.exercises,
     timers: w.timers,
+    workoutMode: normalizeWorkoutMode(w.workoutMode),
     repeating: Boolean(w.repeating),
     repeatIntervalMinutes: normalizeRepeatInterval(w.repeatIntervalMinutes),
     nextDueAt: w.nextDueAt instanceof Date ? w.nextDueAt.getTime() : (w.nextDueAt ?? null)
@@ -1450,6 +1508,7 @@ function addWorkout(workoutData) {
   const newWorkout = {
     ...workoutData,
     id: newId,
+    workoutMode: normalizeWorkoutMode(workoutData.workoutMode),
     repeating: Boolean(workoutData.repeating),
     repeatIntervalMinutes: normalizeRepeatInterval(workoutData.repeatIntervalMinutes),
     timers: normalizeWorkoutTimers(workoutData.timers, getFallbackTimerDuration())
@@ -1505,6 +1564,7 @@ function updateWorkout(id, workoutData) {
   workouts[idx] = {
     ...oldWorkout,
     ...workoutData,
+    workoutMode: normalizeWorkoutMode(workoutData.workoutMode),
     repeating,
     repeatIntervalMinutes,
     timers: normalizeWorkoutTimers(workoutData.timers, getFallbackTimerDuration()),
@@ -1543,6 +1603,7 @@ function cloneWorkout(id) {
     days: Array.isArray(sourceWorkout.days) ? [...sourceWorkout.days] : [],
     exercises: Array.isArray(sourceWorkout.exercises) ? [...sourceWorkout.exercises] : [],
     timers: normalizeWorkoutTimers(sourceWorkout.timers || [], getFallbackTimerDuration()),
+    workoutMode: normalizeWorkoutMode(sourceWorkout.workoutMode),
     completed: false
   };
 
@@ -1723,8 +1784,11 @@ function showActiveWorkout(workout) {
   const allowTimerControlsForDate = isOnSelectedDay && (isViewingToday() || isPastView);
   const allowActiveControls = allowTimerControlsForDate && !isCompletedForDate;
   allowTimerControls = allowTimerControlsForDate;
+  allowCounterControls = allowActiveControls && workout.workoutMode === "counter";
+  currentCounterValue = 0;
+  previousCounterValue = getPreviousCounterValue(workout.id);
   initializeTimerState(workout);
-  renderWorkoutTimers(workout);
+  updateTimerCards();
 
   if (allowActiveControls) {
     if (footer) footer.style.display = '';
@@ -1757,6 +1821,9 @@ function updateExerciseListSizing(list, count) {
 function markCurrentWorkoutCompleted() {
   if (!currentWorkout) return;
   const workoutDefinition = workouts.find((workout) => workout.id === currentWorkout.id) || currentWorkout;
+  if (currentWorkout.workoutMode === "counter") {
+    saveCounterResult(currentWorkout.id, currentCounterValue);
+  }
   const adjusted = applyPendingExerciseAdjustments(workoutDefinition);
   if (adjusted) {
     saveWorkoutsToStorage(workouts);
@@ -1781,6 +1848,7 @@ function markCurrentWorkoutCompleted() {
   }
   stopActiveTimer({ reset: true });
   allowTimerControls = false;
+  allowCounterControls = false;
   stopTitleBlink();
   showView("overviewView");
   renderOverview(true);
@@ -1995,6 +2063,7 @@ function openModal(workout = null) {
     $("#wfTitle").value = workout.title;
     $("#wfTime").value = workout.time;
     $("#wfExercises").value = (workout.exercises || []).join("\n");
+    setWorkoutModeEditorValue(workout.workoutMode);
     renderTimerEditor(workout.timers || []);
     repeatToggle.checked = Boolean(workout.repeating);
     repeatMinutesInput.value = getRepeatMinutes(workout);
@@ -2036,6 +2105,7 @@ function openModal(workout = null) {
     renderTimerEditor([]);
     repeatToggle.checked = false;
     repeatMinutesInput.value = DEFAULT_REPEAT_INTERVAL_MINUTES;
+    setWorkoutModeEditorValue("timer");
   }
 
   if (repeatToggle) {
@@ -2283,6 +2353,7 @@ function handleModalSubmit(e) {
   const repeatMinutesInput = $("#wfRepeatMinutes").value;
   const repeatIntervalMinutes = normalizeRepeatInterval(repeatMinutesInput);
   const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
+  const workoutMode = normalizeWorkoutMode(pendingWorkoutMode);
   const timerRows = Array.from(document.querySelectorAll("#wfTimersContainer .timer-row"));
   const timers = timerRows.map((row, index) => {
     const nameInput = row.querySelector(".timer-name-input");
@@ -2319,6 +2390,7 @@ function handleModalSubmit(e) {
     repeatIntervalMinutes,
     days: selectedDays,
     exercises,
+    workoutMode,
     timers: normalizeWorkoutTimers(timers, getFallbackTimerDuration())
   };
 
@@ -2619,6 +2691,7 @@ function setupEventListeners() {
   $("#backToOverview").addEventListener("click", () => {
     stopActiveTimer({ reset: true });
     allowTimerControls = false;
+    allowCounterControls = false;
     pendingExerciseNumberAdjustments = {};
     showView("overviewView");
     stopTitleBlink();
@@ -2646,7 +2719,21 @@ function setupEventListeners() {
     if (event.code === "Space") {
       event.preventDefault();
       if (!allowTimerControls) return;
+      if (currentWorkout?.workoutMode === "counter") {
+        if (!allowCounterControls) return;
+        currentCounterValue += 1;
+        updateTimerCards();
+        return;
+      }
       toggleActiveTimer();
+      return;
+    }
+
+    if (event.code === "Backspace" && currentWorkout?.workoutMode === "counter") {
+      event.preventDefault();
+      if (!allowCounterControls) return;
+      currentCounterValue = Math.max(0, currentCounterValue - 1);
+      updateTimerCards();
       return;
     }
 
@@ -2669,6 +2756,9 @@ function setupEventListeners() {
   $("#modalBackdrop").addEventListener("click", closeModal);
   $("#workoutForm").addEventListener("submit", handleModalSubmit);
   $("#wfExercises").addEventListener("input", updateModalPreview);
+  $("#wfWorkoutMode").addEventListener("change", (event) => {
+    setWorkoutModeEditorValue(event.currentTarget.value);
+  });
   $("#toggleCompletionBtn").addEventListener("click", toggleCompletionButtonState);
   const addTimerBtn = $("#addTimerBtn");
   if (addTimerBtn) {

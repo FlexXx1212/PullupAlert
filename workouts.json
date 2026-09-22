@@ -8,6 +8,26 @@
   ],
   "workouts": [
     {
+      "id": "cindy",
+      "time": "18:00",
+      "title": "Cindy",
+      "label": "CrossFit",
+      "workoutMode": "counter",
+      "days": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+      "exercises": [
+        "5 Pull-ups",
+        "10 Push-ups",
+        "15 Air Squats"
+      ],
+      "timers": [
+        {
+          "name": "Workout",
+          "durationSeconds": 1200,
+          "repeating": false
+        }
+      ]
+    },
+    {
       "id": "morning",
       "time": "10:30",
       "title": "Rücken & Bizeps",
