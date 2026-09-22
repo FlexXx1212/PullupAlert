@@ -676,6 +676,17 @@ let activeDate = startOfDay(new Date());
 let lastKnownTodayKey = getTodayKey();
 let lastRepeatingLabelRefreshAt = 0;
 let pendingExerciseNumberAdjustments = {};
+let pendingWorkoutMode = "timer";
+
+function normalizeWorkoutMode(mode) {
+  return mode === "counter" ? "counter" : "timer";
+}
+
+function setWorkoutModeEditorValue(mode) {
+  pendingWorkoutMode = normalizeWorkoutMode(mode);
+  const select = $("#wfWorkoutMode");
+  if (select) select.value = pendingWorkoutMode;
+}
 
 // ---- Notification API ----
 function requestNotificationPermission() {
@@ -1446,7 +1457,7 @@ async function loadWorkouts() {
       repeatIntervalMinutes,
       nextDueAt,
       timers: normalizeWorkoutTimers(w.timers, fallbackTimerDuration),
-      workoutMode: w.workoutMode === "counter" ? "counter" : "timer",
+      workoutMode: normalizeWorkoutMode(w.workoutMode),
       dateTime,
       days: daysArr,
       daysIndex,
@@ -1482,7 +1493,7 @@ function saveWorkoutsToStorage(workoutsData) {
     days: w.days,
     exercises: w.exercises,
     timers: w.timers,
-    workoutMode: w.workoutMode === "counter" ? "counter" : "timer",
+    workoutMode: normalizeWorkoutMode(w.workoutMode),
     repeating: Boolean(w.repeating),
     repeatIntervalMinutes: normalizeRepeatInterval(w.repeatIntervalMinutes),
     nextDueAt: w.nextDueAt instanceof Date ? w.nextDueAt.getTime() : (w.nextDueAt ?? null)
@@ -1497,6 +1508,7 @@ function addWorkout(workoutData) {
   const newWorkout = {
     ...workoutData,
     id: newId,
+    workoutMode: normalizeWorkoutMode(workoutData.workoutMode),
     repeating: Boolean(workoutData.repeating),
     repeatIntervalMinutes: normalizeRepeatInterval(workoutData.repeatIntervalMinutes),
     timers: normalizeWorkoutTimers(workoutData.timers, getFallbackTimerDuration())
@@ -1552,6 +1564,7 @@ function updateWorkout(id, workoutData) {
   workouts[idx] = {
     ...oldWorkout,
     ...workoutData,
+    workoutMode: normalizeWorkoutMode(workoutData.workoutMode),
     repeating,
     repeatIntervalMinutes,
     timers: normalizeWorkoutTimers(workoutData.timers, getFallbackTimerDuration()),
@@ -1590,7 +1603,7 @@ function cloneWorkout(id) {
     days: Array.isArray(sourceWorkout.days) ? [...sourceWorkout.days] : [],
     exercises: Array.isArray(sourceWorkout.exercises) ? [...sourceWorkout.exercises] : [],
     timers: normalizeWorkoutTimers(sourceWorkout.timers || [], getFallbackTimerDuration()),
-    workoutMode: sourceWorkout.workoutMode === "counter" ? "counter" : "timer",
+    workoutMode: normalizeWorkoutMode(sourceWorkout.workoutMode),
     completed: false
   };
 
@@ -2050,7 +2063,7 @@ function openModal(workout = null) {
     $("#wfTitle").value = workout.title;
     $("#wfTime").value = workout.time;
     $("#wfExercises").value = (workout.exercises || []).join("\n");
-    $("#wfWorkoutMode").value = workout.workoutMode === "counter" ? "counter" : "timer";
+    setWorkoutModeEditorValue(workout.workoutMode);
     renderTimerEditor(workout.timers || []);
     repeatToggle.checked = Boolean(workout.repeating);
     repeatMinutesInput.value = getRepeatMinutes(workout);
@@ -2092,7 +2105,7 @@ function openModal(workout = null) {
     renderTimerEditor([]);
     repeatToggle.checked = false;
     repeatMinutesInput.value = DEFAULT_REPEAT_INTERVAL_MINUTES;
-    $("#wfWorkoutMode").value = "timer";
+    setWorkoutModeEditorValue("timer");
   }
 
   if (repeatToggle) {
@@ -2340,7 +2353,7 @@ function handleModalSubmit(e) {
   const repeatMinutesInput = $("#wfRepeatMinutes").value;
   const repeatIntervalMinutes = normalizeRepeatInterval(repeatMinutesInput);
   const exercises = $("#wfExercises").value.split("\n").filter(line => line.trim() !== "");
-  const workoutMode = $("#wfWorkoutMode").value === "counter" ? "counter" : "timer";
+  const workoutMode = normalizeWorkoutMode(pendingWorkoutMode);
   const timerRows = Array.from(document.querySelectorAll("#wfTimersContainer .timer-row"));
   const timers = timerRows.map((row, index) => {
     const nameInput = row.querySelector(".timer-name-input");
@@ -2743,6 +2756,9 @@ function setupEventListeners() {
   $("#modalBackdrop").addEventListener("click", closeModal);
   $("#workoutForm").addEventListener("submit", handleModalSubmit);
   $("#wfExercises").addEventListener("input", updateModalPreview);
+  $("#wfWorkoutMode").addEventListener("change", (event) => {
+    setWorkoutModeEditorValue(event.currentTarget.value);
+  });
   $("#toggleCompletionBtn").addEventListener("click", toggleCompletionButtonState);
   const addTimerBtn = $("#addTimerBtn");
   if (addTimerBtn) {
