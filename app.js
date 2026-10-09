@@ -4,6 +4,7 @@ import { getUserState, onAuthChange, saveUserState, signInWithGoogle, signOutUse
 const SETTINGS_KEY = "pullup-alert-settings";
 const WORKOUTS_KEY = "pullup-alert-workouts"; // Neuer Key für Workouts
 const STORAGE_KEY = "pullup-alert-completions";
+const COMPLETION_HISTORY_KEY = "pullup-alert-completion-history";
 const REPEATING_COMPLETION_COUNTS_KEY = "pullup-alert-repeating-completion-counts";
 const STANDUP_SETTINGS_KEY = "pullup-alert-standup-settings";
 const STANDUP_STATE_KEY = "pullup-alert-standup-state";
@@ -14,6 +15,7 @@ const EXPORTABLE_STORAGE_KEYS = [
   SETTINGS_KEY,
   WORKOUTS_KEY,
   STORAGE_KEY,
+  COMPLETION_HISTORY_KEY,
   REPEATING_COMPLETION_COUNTS_KEY,
   STANDUP_SETTINGS_KEY,
   STANDUP_STATE_KEY,
@@ -147,6 +149,7 @@ async function handlePersistenceModeChange() {
   renderExerciseVariablesSettings();
   updateExerciseVariablePrefixList();
   renderCategorySettings();
+  renderRecentWorkouts();
 }
 
 function updateAuthUI(user) {
@@ -820,6 +823,75 @@ function saveCompletions(completions) {
   }
 }
 
+function loadCompletionHistory() {
+  try {
+    const history = JSON.parse(getStorageRaw(COMPLETION_HISTORY_KEY) || "[]");
+    return Array.isArray(history) ? history.filter(entry =>
+      entry && typeof entry.workoutId === "string" &&
+      Number.isFinite(Date.parse(entry.completedAt))
+    ) : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordWorkoutCompletion(workoutId, date, repeating = false) {
+  const workout = workouts.find(workout => workout.id === workoutId);
+  const history = loadCompletionHistory();
+  history.push({
+    workoutId,
+    title: workout?.title || "Workout",
+    dateKey: getDateKey(date),
+    completedAt: new Date().toISOString(),
+    repeating
+  });
+  setStorageJson(COMPLETION_HISTORY_KEY, history);
+}
+
+function renderRecentWorkouts() {
+  const list = document.getElementById("recentWorkoutsList");
+  if (!list) return;
+  const history = loadCompletionHistory();
+  const entries = history.map(entry => ({ ...entry, date: new Date(entry.completedAt) }));
+  const addLegacyEntries = (data, repeating) => {
+    Object.entries(data || {}).forEach(([dateKey, completions]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !completions || typeof completions !== "object") return;
+      Object.entries(completions).forEach(([workoutId, value]) => {
+        const knownCount = history.filter(entry =>
+          entry.workoutId === workoutId && entry.dateKey === dateKey && Boolean(entry.repeating) === repeating
+        ).length;
+        const count = repeating ? Math.max(0, parseInt(value, 10) || 0) : (value ? 1 : 0);
+        for (let i = 0; i < Math.min(3, count - knownCount); i++) {
+          const date = new Date(`${dateKey}T00:00:00`);
+          if (!Number.isFinite(date.getTime())) continue;
+          entries.push({ title: workouts.find(workout => workout.id === workoutId)?.title || "Workout", date });
+        }
+      });
+    });
+  };
+  addLegacyEntries(loadCompletions(), false);
+  addLegacyEntries(loadRepeatingCompletionCounts(), true);
+  entries.sort((a, b) => b.date - a.date);
+  list.replaceChildren();
+  if (!entries.length) {
+    const empty = document.createElement("li");
+    empty.className = "hint-small";
+    empty.textContent = "Noch keine Workouts abgeschlossen.";
+    list.appendChild(empty);
+    return;
+  }
+  entries.slice(0, 3).forEach(entry => {
+    const item = document.createElement("li");
+    const title = document.createElement("strong");
+    title.textContent = entry.title;
+    const details = document.createElement("span");
+    const date = entry.date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    details.textContent = date;
+    item.append(title, details);
+    list.appendChild(item);
+  });
+}
+
 function loadRepeatingCompletionCounts() {
   try {
     const raw = getStorageRaw(REPEATING_COMPLETION_COUNTS_KEY);
@@ -856,6 +928,7 @@ function incrementRepeatingCompletionCount(workoutId, date = new Date()) {
   const previousCount = Math.max(0, parseInt(completionCounts[dateKey][workoutId], 10) || 0);
   completionCounts[dateKey][workoutId] = previousCount + 1;
   saveRepeatingCompletionCounts(completionCounts);
+  recordWorkoutCompletion(workoutId, date, true);
 }
 
 function getRepeatingCompletionCountSuffix(workoutId, date = new Date()) {
@@ -872,11 +945,19 @@ function isWorkoutCompleted(workoutId, date = new Date()) {
 function setWorkoutCompleted(workoutId, completed, date = new Date()) {
   const completions = loadCompletions();
   const dateKey = getDateKey(date);
+  const wasCompleted = Boolean(completions[dateKey]?.[workoutId]);
   if (!completions[dateKey]) {
     completions[dateKey] = {};
   }
   completions[dateKey][workoutId] = completed;
   saveCompletions(completions);
+  if (completed && !wasCompleted) {
+    recordWorkoutCompletion(workoutId, date);
+  } else if (!completed && wasCompleted) {
+    setStorageJson(COMPLETION_HISTORY_KEY, loadCompletionHistory().filter(entry =>
+      entry.repeating || entry.workoutId !== workoutId || entry.dateKey !== dateKey
+    ));
+  }
 }
 
 function isViewingToday(date = activeDate) {
@@ -2149,6 +2230,7 @@ function openSettingsModal() {
   const modal = $("#settingsModal");
   if (!modal) return;
   syncNotificationSettingsControls();
+  renderRecentWorkouts();
   modal.classList.remove("modal--hidden");
   modal.setAttribute("aria-hidden", "false");
 }
