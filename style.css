@@ -1546,6 +1546,28 @@ body {
   gap: 12px;
 }
 
+.recent-workouts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-workouts li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.recent-workouts span {
+  font-size: 0.875rem;
+}
+
 .category-row {
   display: grid;
   grid-template-columns: 1.4fr auto auto;
